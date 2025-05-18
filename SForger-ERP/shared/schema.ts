@@ -9,7 +9,9 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   fullName: text("full_name").notNull(),
   email: text("email").notNull(),
-  role: text("role").notNull().default("employee"),
+  // Restrict role to enum
+  role: text("role").notNull().default("employee"), // 'admin', 'hr', 'employee'
+  companyId: text("company_id").notNull().unique(),
   department: text("department"),
   position: text("position"),
   profileImage: text("profile_image"),
@@ -22,6 +24,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   fullName: true,
   email: true,
   role: true,
+  companyId: true,
   department: true,
   position: true,
   profileImage: true,

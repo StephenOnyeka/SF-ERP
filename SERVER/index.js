@@ -52,13 +52,35 @@ app.post('/api/register', async (req, res) => {
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
+    // Assign companyId logic
+    let assignedRole = role || "employee";
+    let companyId = "";
+    if (assignedRole === "admin") {
+      companyId = "SF-001";
+    } else if (assignedRole === "hr") {
+      companyId = "SF-002";
+    } else {
+      // Find max companyId for employee, increment
+      const lastEmployee = await User.find({ role: "employee" })
+        .sort({ companyId: -1 })
+        .limit(1);
+      let lastId = 4;
+      if (lastEmployee.length > 0 && lastEmployee[0].companyId) {
+        const match = lastEmployee[0].companyId.match(/SF-(\d+)/);
+        if (match) {
+          lastId = parseInt(match[1], 10) + 1;
+        }
+      }
+      companyId = `SF-${lastId.toString().padStart(3, '0')}`;
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
       username,
       password: hashedPassword,
       fullName,
       email,
-      role: role || "employee",
+      role: assignedRole,
+      companyId,
       department,
       position,
       profileImage
@@ -115,6 +137,63 @@ app.get('/api/user', async (req, res) => {
   } catch (err) {
     res.status(401).json({ message: 'Invalid token' });
   }
+});
+
+// Admin: Change user role
+app.post('/api/admin/change-role', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ message: 'No token' });
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+    const adminUser = await User.findById(decoded.userId);
+    if (!adminUser || adminUser.role !== 'admin') {
+      return res.status(403).json({ message: 'Only admin can change roles' });
+    }
+    const { userId, newRole } = req.body;
+    if (!['admin', 'hr', 'employee'].includes(newRole)) {
+      return res.status(400).json({ message: 'Invalid role' });
+    }
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    // Assign companyId for admin/hr if needed
+    let companyId = user.companyId;
+    if (newRole === 'admin') {
+      companyId = 'SF-001';
+    } else if (newRole === 'hr') {
+      companyId = 'SF-002';
+    } else if (user.role !== 'employee' && newRole === 'employee') {
+      // Find last employee companyId
+      const lastEmployee = await User.find({ role: "employee" })
+        .sort({ companyId: -1 })
+        .limit(1);
+      let lastId = 4;
+      if (lastEmployee.length > 0 && lastEmployee[0].companyId) {
+        const match = lastEmployee[0].companyId.match(/SF-(\d+)/);
+        if (match) {
+          lastId = parseInt(match[1], 10) + 1;
+        }
+      }
+      companyId = `SF-${lastId.toString().padStart(3, '0')}`;
+    }
+    user.role = newRole;
+    user.companyId = companyId;
+    await user.save();
+    res.json({ message: 'Role updated', user });
+  } catch (err) {
+    res.status(401).json({ message: 'Invalid token or server error', error: err.message });
+  }
+});
+
+// Filter users by role
+app.get('/api/users', async (req, res) => {
+  const { role } = req.query;
+  let filter = {};
+  if (role && ['admin', 'hr', 'employee'].includes(role)) {
+    filter.role = role;
+  }
+  const users = await User.find(filter).select('-password');
+  res.json(users);
 });
 
 // Start server

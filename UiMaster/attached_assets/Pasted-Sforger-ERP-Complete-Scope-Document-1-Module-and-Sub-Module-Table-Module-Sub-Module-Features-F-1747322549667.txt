@@ -1,0 +1,120 @@
+Sforger ERP - Complete Scope
+Document
+1. Module and Sub-Module Table
+Module Sub-Module Features/Functions Remarks
+Authentication &
+User Roles
+- Secure login/logout
+for employees and
+admin; Role-based
+access (Admin, HR,
+Employee)
+Employee
+Dashboard
+- Display personal
+details, job role,
+department info;
+Real-time clock
+in/out buttons;
+Leave balance
+display
+Attendance
+Management
+- Daily login/logout
+timestamps; Automark
+attendance
+based on clock-ins;
+Half-day for late
+login/early logout;
+Missed punch alerts
+Leave Management Leave Types Paid Leave (PL),
+Sick Leave (SL),
+Casual Leave (CL)
+Leave Management Leave Application Leave application
+with approval
+workflow
+(employee →
+reporting manager)
+Leave Management Leave Quota &
+Calendar
+Leave quota
+management; Carryforward
+rules;
+Holiday calendar
+integration
+Payroll Management - Monthly salary
+calculation (Base
+salary × working
+days/total working
+days); Deduction for
+unpaid leaves; Autogenerate
+salary
+slips; Export reports
+(Excel/PDF)
+Reports & Analytics - Monthly attendance
+summary per
+employee;
+Department-wise
+working hour
+reports; Late login
+trends; Overtime,
+absenteeism; Leave
+utilization reports;
+Salary disbursement
+reports
+Admin Panel - Add/update
+employee details;
+Define working days
+and holidays; Leave
+policy and payroll
+settings; Manual
+attendance override
+2. Role-wise Access Matrix
+Module Sub-Module Admin Access HR Access Employee
+Access
+Authentication
+& User Roles
+- Full Partial (view
+users)
+Selflogin/
+logout
+Employee
+Dashboard
+- View/Edit All View/Edit
+Department
+View Self
+Attendance
+Management
+- Full Control Manage
+Attendance
+Clock-in/out,
+View own
+Leave
+Management
+Leave Types Define/Edit Manage View
+Leave
+Management
+Leave
+Application
+View All Approve/Reject Apply/Track
+own
+Leave
+Management
+Leave Quota &
+Calendar
+Set Policies View/Edit View
+Payroll
+Management
+- Full Control View/Assist View own Salary
+Slip
+Reports &
+Analytics
+- Full Reports HR-specific
+Reports
+Limited (Self
+Attendance
+Summary)
+Admin Panel - Full Control Limited
+(Employee
+Details)
+No Access
