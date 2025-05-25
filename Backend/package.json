@@ -1,23 +1,23 @@
 {
-  "name": "sforger-erp-server",
+  "name": "sforger-erp-backend",
   "version": "1.0.0",
-  "main": "index.js",
-  "type": "commonjs",
+  "description": "Backend for SForger ERP System",
+  "main": "app.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "seed": "node scripts/seedUsers.js"
   },
   "dependencies": {
-    "bcrypt": "^5.1.0",
+    "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
+    "dotenv": "^16.0.3",
     "express": "^4.18.2",
-    "jsonwebtoken": "^9.0.2",
-    "mongodb": "^6.16.0",
-    "mongoose": "^8.3.2",
-    "zod": "^3.24.4"
+    "jsonwebtoken": "^9.0.0",
+    "mongoose": "^7.0.3",
+    "zod": "^3.21.4"
   },
   "devDependencies": {
-    "nodemon": "^3.0.3"
+    "nodemon": "^2.0.22"
   }
 }
