@@ -4,9 +4,11 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { z } = require('zod');
 
+
 // Validation schema for registration
 const registerSchema = z.object({
   fullName: z.string().min(2),
+  username: z.string().min(2),
   email: z.string().email(),
   password: z.string().min(6),
   role: z.enum(['admin', 'hr', 'employee']).optional()
@@ -21,8 +23,39 @@ const loginSchema = z.object({
 // Register new user
 router.post('/register', async (req, res) => {
   try {
-    const validatedData = registerSchema.parse(req.body);
-    
+    const { role } = req.body;
+        
+    // Assign companyId logic
+    let assignedRole = role || "employee";
+    let companyId = "";
+    if (assignedRole === "admin") {
+      companyId = "SF-001";
+    } else if (assignedRole === "hr") {
+      companyId = "SF-002";
+    } else {
+      // Find max companyId for employee, increment
+      const lastEmployee = await User.find({ role: "employee" })
+        .sort({ companyId: -1 })
+        .limit(1);
+      let lastId = 4;
+      if (lastEmployee.length > 0 && lastEmployee[0].companyId) {
+        const match = lastEmployee[0].companyId.match(/SF-(\d+)/);
+        if (match) {
+          lastId = parseInt(match[1], 10) + 1;
+        }
+      }
+      companyId = `SF-${lastId.toString().padStart(3, "0")}`;
+    }
+
+
+    // const validatedData = registerSchema.parse(req.body) + companyId ;
+
+            const validatedData = {
+          ...registerSchema.parse(req.body),
+          companyId, 
+          username: req.body.username
+        };
+    console.log(req.body);
     // Check if user already exists
     const existingUser = await User.findOne({ email: validatedData.email });
     if (existingUser) {

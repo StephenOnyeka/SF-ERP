@@ -3,7 +3,7 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
-require("dotenv").config();
+require('dotenv').config(); // Load environment variables from .env file
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -20,8 +20,11 @@ const User = require("./models/User");
 const employeeRoutes = require("./routes/employeeRoutes");
 
 // Connect to MongoDB
+const mongo = "Connecting to MongoDB..."+ process.env.DATABASE_URL;
+console.log(mongo);
+
 mongoose
-  .connect(process.env.DATABASE_URL, {})
+  .connect(`${process.env.DATABASE_URL}/sforger-erp`, {})
   .then(() => {
     console.log("Connected to MongoDB");
   })
@@ -49,6 +52,7 @@ const registerSchema = z.object({
 });
 
 app.post("/api/register", async (req, res) => {
+  console.log("Register request body:", req.body);
   try {
     // Validate request body
     const parsed = registerSchema.parse(req.body);

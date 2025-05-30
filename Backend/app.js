@@ -15,7 +15,7 @@ app.use(express.json());
 
 // Connect to MongoDB
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(process.env.MONGO_URI, {})
   .then(() => console.log("Connected to MongoDB"))
   .catch((err) => console.error("MongoDB connection error:", err));
 
@@ -31,6 +31,10 @@ app.use((err, req, res, next) => {
   res
     .status(500)
     .json({ message: "Something went wrong!", error: err.message });
+});
+
+app.get("/", (req, res) => {
+  res.send("SForger-ERP API is running.");
 });
 
 // Start server

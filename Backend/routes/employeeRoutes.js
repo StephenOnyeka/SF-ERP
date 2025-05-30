@@ -68,6 +68,7 @@ router.get("/:id", async (req, res) => {
 
 // Create employee
 router.post("/", async (req, res) => {
+  console.log("Create employee request body:", req.body);
   try {
     const validatedData = employeeSchema.parse(req.body);
 
