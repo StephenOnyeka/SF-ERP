@@ -57,7 +57,7 @@ SForger ERP/
       - Backend Maintainer: [jainish2001](https://github.com/jainish2001)
  -->
 
-Want to contribute or suggest a feature? [SForger-ERP](https://github.com/jainish2001/SForger-ERP/issues) or email us at support@sforgererp.com. 
+Want to contribute or suggest a feature? [SForger-ERP](https://github.com/jainish2001/SForger-ERP/) or email us at support@sforgererp.com. 
 
 ---
 
