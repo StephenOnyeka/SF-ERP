@@ -17,7 +17,7 @@ SForger ERP is a private, full-stack Enterprise Resource Planning system for man
 
 ## Tech Stack
 
-- **Frontend:** React 18, TypeScript, Vite, TailwindCSS, Radix UI, TanStack Query, Drizzle ORM (PostgreSQL)
+- **Frontend:** React 18, TypeScript, Vite, TailwindCSS, Radix UI
 - **Backend:** Node.js, Express, TypeScript, MongoDB (Mongoose), Passport.js, JWT, Zod
 
 ---
