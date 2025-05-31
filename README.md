@@ -50,12 +50,14 @@ SForger ERP/
 ## Notes
 
 - This project is private and not licensed for public or commercial use.
-- For support, open a GitHub issue or contact the maintainer.
-   - Repository Maintainer by SForger ERP Team
+- For support, [Open an issue](https://github.com/jainish2001/SForger-ERP/issues) or email us at support@sforgererp.com
+<!--   - Repository Maintainer by SForger ERP Team
       - Repository Maintainer: [jainish2001](https://github.com/jainish2001)
       - Frontend Maintainer: [jainish2001](https://github.com/jainish2001)
       - Backend Maintainer: [jainish2001](https://github.com/jainish2001)
- 
+ -->
+
+Want to contribute or suggest a feature? [Open an issue](https://github.com/SFxForger/SFManagers/issues) or email us at support@sfmanagers.com. 
 
 ---
 
