@@ -26,7 +26,7 @@ The Frontend of SForger ERP is a modern, responsive web application built with R
 - **State/Data:** TanStack Query, React Context
 - **Forms & Validation:** React Hook Form, Zod
 - **API:** RESTful, fetch/axios
-- **Other:** Drizzle ORM (PostgreSQL), Passport.js (for session management), Framer Motion, Lucide Icons
+- **Other:** Passport.js (for session management), Framer Motion, Lucide Icons
 
 ---
 
