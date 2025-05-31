@@ -99,7 +99,7 @@ npm run dev
 
 ## Support
 
-For issues, please open a GitHub issue or contact the Frontend Maintainer: [jainish2001](https://github.com/jainish2001)
+For issues, please [Open an issue](https://github.com/jainish2001/SForger-ERP/issues) or email us at support@sforgererp.com
 
 This project is private and not licensed for public or commercial use.
 
