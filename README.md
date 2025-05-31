@@ -42,8 +42,8 @@ SForger ERP/
    cd SForger-ERP
    ```
 2. **Follow setup instructions for each part:**
-   - [Frontend Setup Guide](./frontend.md)
-   - [Backend Setup Guide](./backend.md)
+   - [Frontend Setup Guide](./Frontend/frontend.md)
+   - [Backend Setup Guide](./Backend/backend.md)
 
 ---
 
