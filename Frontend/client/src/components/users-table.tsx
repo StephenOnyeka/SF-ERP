@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
@@ -61,98 +61,76 @@ import {
   AlertTriangle
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import { adminApi } from "@/lib/api";
+import { toast } from "sonner";
 
 interface User {
-  id: number;
-  username: string;
-  firstName: string;
-  lastName: string;
+  _id: string;
+  fullName: string;
   email: string;
   role: string;
-  department: string | null;
-  position: string | null;
-  joinDate: string;
-  companyId: string;
-  profileImage?: string | null;
+  isActive: boolean;
 }
 
 export default function UsersTable() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [deleteUserId, setDeleteUserId] = useState<number | null>(null);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [newRole, setNewRole] = useState<string>("");
   
-  const { toast } = useToast();
+  const { toast: useToastToast } = useToast();
   const { user: currentUser } = useAuth();
   const itemsPerPage = 8;
   
-  // Query users data
-  const { data: users, isLoading } = useQuery<User[]>({
-    queryKey: ["/api/users"],
-  });
-  
-  // Delete user mutation
-  const deleteUserMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      const res = await apiRequest("DELETE", `/api/users/${userId}`);
-      return await res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "User deleted",
-        description: "The user has been removed successfully.",
-      });
-      // Invalidate users query to refresh the data
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      setIsDeleteDialogOpen(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete user. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-  
-  // Change role mutation
-  const changeRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: number; role: string }) => {
-      const res = await apiRequest("PATCH", `/api/users/${userId}/role`, { role });
-      return await res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Role updated",
-        description: "The user's role has been updated successfully.",
-      });
-      // Invalidate users query to refresh the data
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
-      setIsRoleDialogOpen(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update role. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-  
+  const fetchUsers = async () => {
+    try {
+      const response = await adminApi.getUsers();
+      setUsers(response.data);
+    } catch (error) {
+      toast.error("Failed to fetch users");
+      console.error("Error fetching users:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleStatusToggle = async (userId: string, currentStatus: boolean) => {
+    try {
+      await adminApi.updateUser(userId, { isActive: !currentStatus });
+      toast.success("User status updated");
+      fetchUsers(); // Refresh the list
+    } catch (error) {
+      toast.error("Failed to update user status");
+      console.error("Error updating user:", error);
+    }
+  };
+
+  const handleRoleUpdate = async (userId: string, newRole: string) => {
+    try {
+      await adminApi.updateUser(userId, { role: newRole });
+      toast.success("User role updated");
+      fetchUsers(); // Refresh the list
+    } catch (error) {
+      toast.error("Failed to update user role");
+      console.error("Error updating user:", error);
+    }
+  };
+
   // Filter users based on search
   const filteredUsers = users
     ? users.filter(
         (user) =>
-          user.firstName.toLowerCase().includes(search.toLowerCase()) ||
-          user.lastName.toLowerCase().includes(search.toLowerCase()) ||
-          user.email.toLowerCase().includes(search.toLowerCase()) ||
-          user.username.toLowerCase().includes(search.toLowerCase()) ||
-          user.companyId.toLowerCase().includes(search.toLowerCase()) ||
-          user.department?.toLowerCase().includes(search.toLowerCase()) ||
-          user.position?.toLowerCase().includes(search.toLowerCase())
+          user.fullName.toLowerCase().includes(search.toLowerCase()) ||
+          user.email.toLowerCase().includes(search.toLowerCase())
       )
     : [];
   
@@ -181,7 +159,7 @@ export default function UsersTable() {
   
   // Handlers
   const handleDeleteUser = (user: User) => {
-    setDeleteUserId(user.id);
+    setDeleteUserId(user._id);
     setIsDeleteDialogOpen(true);
   };
   
@@ -193,13 +171,13 @@ export default function UsersTable() {
   
   const confirmDeleteUser = () => {
     if (deleteUserId) {
-      deleteUserMutation.mutate(deleteUserId);
+      handleDeleteUser({ _id: deleteUserId, fullName: "", email: "", role: "", isActive: true });
     }
   };
   
   const confirmChangeRole = () => {
     if (selectedUser && newRole) {
-      changeRoleMutation.mutate({ userId: selectedUser.id, role: newRole });
+      handleRoleUpdate(selectedUser._id, newRole);
     }
   };
   
@@ -208,7 +186,7 @@ export default function UsersTable() {
     if (!currentUser) return false;
     
     // Prevent deleting your own account
-    if (currentUser.id === targetUser.id) return false;
+    if (currentUser._id === targetUser._id) return false;
     
     // Admin can delete anyone
     if (currentUser.role === 'admin') return true;
@@ -224,7 +202,7 @@ export default function UsersTable() {
     return currentUser?.role === 'admin';
   };
   
-  if (isLoading) {
+  if (loading) {
     return (
       <Card>
         <CardHeader>
@@ -278,38 +256,34 @@ export default function UsersTable() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Company ID</TableHead>
+                  <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Join Date</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedUsers.length > 0 ? (
                   paginatedUsers.map((user) => (
-                    <TableRow key={user.id}>
+                    <TableRow key={user._id}>
                       <TableCell className="font-medium">
-                        <div>{user.firstName} {user.lastName}</div>
+                        <div>{user.fullName}</div>
                         <div className="text-xs text-gray-500">{user.email}</div>
                       </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="font-mono">
-                          {user.companyId}
-                        </Badge>
-                      </TableCell>
+                      <TableCell>{user.email}</TableCell>
                       <TableCell>{getRoleBadge(user.role)}</TableCell>
                       <TableCell>
-                        {user.department || "-"}
-                        {user.position ? (
-                          <div className="text-xs text-gray-500">{user.position}</div>
-                        ) : null}
-                      </TableCell>
-                      <TableCell>
-                        {user.joinDate ? format(parseISO(user.joinDate), "MMM d, yyyy") : "-"}
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs ${
+                            user.isActive
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                        >
+                          {user.isActive ? "Active" : "Inactive"}
+                        </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        {/* Action buttons with permission checks */}
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" title="User Actions">
@@ -317,7 +291,6 @@ export default function UsersTable() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            {/* Only admin can change roles */}
                             {canChangeRole() && (
                               <DropdownMenuItem onClick={() => handleChangeRole(user)}>
                                 <UserCog className="h-4 w-4 mr-2" />
@@ -325,7 +298,6 @@ export default function UsersTable() {
                               </DropdownMenuItem>
                             )}
                             
-                            {/* Delete user (with permission check) */}
                             {canDeleteUser(user) && (
                               <DropdownMenuItem 
                                 onClick={() => handleDeleteUser(user)}
@@ -413,7 +385,7 @@ export default function UsersTable() {
           <DialogHeader>
             <DialogTitle>Change User Role</DialogTitle>
             <DialogDescription>
-              Change the role for {selectedUser?.firstName} {selectedUser?.lastName}. This will affect the user's permissions in the system.
+              Change the role for {selectedUser?.fullName}. This will affect the user's permissions in the system.
             </DialogDescription>
           </DialogHeader>
           
@@ -442,9 +414,9 @@ export default function UsersTable() {
             </Button>
             <Button
               onClick={confirmChangeRole}
-              disabled={!newRole || newRole === selectedUser?.role || changeRoleMutation.isPending}
+              disabled={!newRole || newRole === selectedUser?.role || handleRoleUpdate.isPending}
             >
-              {changeRoleMutation.isPending ? "Updating..." : "Save Changes"}
+              {handleRoleUpdate.isPending ? "Updating..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -475,9 +447,9 @@ export default function UsersTable() {
             <Button
               variant="destructive"
               onClick={confirmDeleteUser}
-              disabled={deleteUserMutation.isPending}
+              disabled={handleDeleteUser.isPending}
             >
-              {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
+              {handleDeleteUser.isPending ? "Deleting..." : "Delete User"}
             </Button>
           </DialogFooter>
         </DialogContent>
