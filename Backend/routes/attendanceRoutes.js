@@ -3,28 +3,6 @@ const router = express.Router();
 const Attendance = require("../models/Attendance");
 const Employee = require("../models/Employee");
 const { auth, isHR } = require("../middleware/auth");
-const { z } = require("zod");
-
-// Validation schema for attendance
-const attendanceSchema = z.object({
-  date: z.string().transform((str) => new Date(str)),
-  checkIn: z.object({
-    time: z.string().transform((str) => new Date(str)),
-    location: z.object({
-      coordinates: z.array(z.number()).length(2),
-    }),
-  }),
-  checkOut: z
-    .object({
-      time: z.string().transform((str) => new Date(str)),
-      location: z.object({
-        coordinates: z.array(z.number()).length(2),
-      }),
-    })
-    .optional(),
-  status: z.enum(["present", "absent", "late", "half-day"]),
-  notes: z.string().optional(),
-});
 
 // Get all attendance records (HR only)
 router.get("/", auth, isHR, async (req, res) => {
@@ -81,42 +59,39 @@ router.get("/my-attendance", auth, async (req, res) => {
   }
 });
 
-// Record check-in
+// Check-in
 router.post("/check-in", auth, async (req, res) => {
   try {
-    const { location } = req.body;
     const employee = await Employee.findOne({ user: req.user._id });
-
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
+    const { location } = req.body;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    let attendance = await Attendance.findOne({
+    // Check if already checked in today
+    const existingAttendance = await Attendance.findOne({
       employee: employee._id,
       date: today,
     });
 
-    if (attendance) {
+    if (existingAttendance) {
       return res.status(400).json({ message: "Already checked in today" });
     }
 
-    // Determine if late (assuming work starts at 9 AM)
-    const checkInTime = new Date();
-    const isLate = checkInTime.getHours() >= 9 && checkInTime.getMinutes() > 0;
-
-    attendance = new Attendance({
+    const attendance = new Attendance({
       employee: employee._id,
       date: today,
       checkIn: {
-        time: checkInTime,
+        time: new Date(),
         location: {
-          coordinates: location,
+          type: "Point",
+          coordinates: [location.longitude, location.latitude],
         },
       },
-      status: isLate ? "late" : "present",
+      status: "present",
     });
 
     await attendance.save();
@@ -126,16 +101,15 @@ router.post("/check-in", auth, async (req, res) => {
   }
 });
 
-// Record check-out
+// Check-out
 router.post("/check-out", auth, async (req, res) => {
   try {
-    const { location } = req.body;
     const employee = await Employee.findOne({ user: req.user._id });
-
     if (!employee) {
       return res.status(404).json({ message: "Employee not found" });
     }
 
+    const { location } = req.body;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -146,7 +120,7 @@ router.post("/check-out", auth, async (req, res) => {
 
     if (!attendance) {
       return res
-        .status(400)
+        .status(404)
         .json({ message: "No check-in record found for today" });
     }
 
@@ -157,7 +131,8 @@ router.post("/check-out", auth, async (req, res) => {
     attendance.checkOut = {
       time: new Date(),
       location: {
-        coordinates: location,
+        type: "Point",
+        coordinates: [location.longitude, location.latitude],
       },
     };
 
