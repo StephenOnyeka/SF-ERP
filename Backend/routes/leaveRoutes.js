@@ -3,16 +3,6 @@ const router = express.Router();
 const LeaveRequest = require("../models/LeaveRequest");
 const Employee = require("../models/Employee");
 const { auth, isHR } = require("../middleware/auth");
-const { z } = require("zod");
-
-// Validation schema for leave request
-const leaveRequestSchema = z.object({
-  startDate: z.string().transform((str) => new Date(str)),
-  endDate: z.string().transform((str) => new Date(str)),
-  type: z.enum(["annual", "sick", "maternity", "paternity", "unpaid", "other"]),
-  reason: z.string().min(10),
-  attachments: z.array(z.string()).optional(),
-});
 
 // Get all leave requests (HR only)
 router.get("/", auth, isHR, async (req, res) => {
@@ -66,7 +56,7 @@ router.post("/", auth, async (req, res) => {
       return res.status(404).json({ message: "Employee not found" });
     }
 
-    const validatedData = leaveRequestSchema.parse(req.body);
+    const { startDate, endDate, type, reason, attachments } = req.body;
 
     // Check for overlapping leave requests
     const overlappingLeave = await LeaveRequest.findOne({
@@ -74,40 +64,38 @@ router.post("/", auth, async (req, res) => {
       status: { $in: ["pending", "approved"] },
       $or: [
         {
-          startDate: { $lte: validatedData.endDate },
-          endDate: { $gte: validatedData.startDate },
+          startDate: { $lte: new Date(endDate) },
+          endDate: { $gte: new Date(startDate) },
         },
       ],
     });
 
     if (overlappingLeave) {
       return res.status(400).json({
-        message: "You already have a leave request for these dates",
+        message: "You have an overlapping leave request for these dates",
       });
     }
 
     const leaveRequest = new LeaveRequest({
-      ...validatedData,
       employee: employee._id,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      type,
+      reason,
+      attachments,
     });
 
     await leaveRequest.save();
     res.status(201).json(leaveRequest);
   } catch (err) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({
-        message: "Validation error",
-        errors: err.errors,
-      });
-    }
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });
 
 // Update leave request status (HR only)
-router.patch("/:id/status", auth, isHR, async (req, res) => {
+router.patch("/:id", auth, isHR, async (req, res) => {
   try {
-    const { status, rejectionReason } = req.body;
+    const { status, comments } = req.body;
     if (!["approved", "rejected"].includes(status)) {
       return res.status(400).json({ message: "Invalid status" });
     }
@@ -119,16 +107,14 @@ router.patch("/:id/status", auth, isHR, async (req, res) => {
 
     if (leaveRequest.status !== "pending") {
       return res.status(400).json({
-        message: "Can only update pending leave requests",
+        message: "Cannot update a non-pending leave request",
       });
     }
 
     leaveRequest.status = status;
+    leaveRequest.comments = comments;
     leaveRequest.approvedBy = req.user._id;
-
-    if (status === "rejected" && rejectionReason) {
-      leaveRequest.rejectionReason = rejectionReason;
-    }
+    leaveRequest.approvedAt = new Date();
 
     await leaveRequest.save();
     res.json(leaveRequest);
@@ -140,25 +126,26 @@ router.patch("/:id/status", auth, isHR, async (req, res) => {
 // Cancel leave request
 router.patch("/:id/cancel", auth, async (req, res) => {
   try {
-    const employee = await Employee.findOne({ user: req.user._id });
-    if (!employee) {
-      return res.status(404).json({ message: "Employee not found" });
-    }
-
     const leaveRequest = await LeaveRequest.findById(req.params.id);
     if (!leaveRequest) {
       return res.status(404).json({ message: "Leave request not found" });
     }
 
+    const employee = await Employee.findOne({ user: req.user._id });
+    if (!employee) {
+      return res.status(404).json({ message: "Employee not found" });
+    }
+
+    // Check if the leave request belongs to the employee
     if (leaveRequest.employee.toString() !== employee._id.toString()) {
       return res.status(403).json({
-        message: "Not authorized to cancel this leave request",
+        message: "You are not authorized to cancel this leave request",
       });
     }
 
     if (leaveRequest.status !== "pending") {
       return res.status(400).json({
-        message: "Can only cancel pending leave requests",
+        message: "Cannot cancel a non-pending leave request",
       });
     }
 
