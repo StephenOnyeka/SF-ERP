@@ -1,192 +1,106 @@
-import { pgTable, text, serial, integer, boolean, timestamp, date, time } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// User schema
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-  firstName: text("first_name").notNull(),
-  lastName: text("last_name").notNull(),
-  email: text("email").notNull().unique(),
-  role: text("role").notNull().default("employee"), // admin, hr, employee
-  department: text("department"),
-  position: text("position"),
-  joinDate: date("join_date").notNull().default(new Date()),
-  profileImage: text("profile_image"),
-  companyId: text("company_id").notNull().unique(), // Format: SF-001, SF-002, etc.
+// Base schemas
+export const userSchema = z.object({
+  id: z.number().optional(),
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  role: z.enum(["admin", "hr", "employee"]).default("employee"),
+  department: z.string().optional(),
+  position: z.string().optional(),
+  joinDate: z.date().default(() => new Date()),
+  profileImage: z.string().optional(),
+  companyId: z.string().regex(/^SF-\d{3}$/, "Invalid company ID format"),
 });
 
-// Attendance records
-export const attendances = pgTable("attendances", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  date: date("date").notNull().default(new Date()),
-  checkInTime: time("check_in_time"),
-  checkOutTime: time("check_out_time"),
-  status: text("status").notNull().default("present"), // present, absent, half-day
-  workingHours: text("working_hours"),
-  notes: text("notes"),
+export const attendanceSchema = z.object({
+  id: z.number().optional(),
+  userId: z.number(),
+  date: z.date().default(() => new Date()),
+  checkInTime: z.string().optional(),
+  checkOutTime: z.string().optional(),
+  status: z.enum(["present", "absent", "half-day"]).default("present"),
+  workingHours: z.string().optional(),
+  notes: z.string().optional(),
 });
 
-// Leave types
-export const leaveTypes = pgTable("leave_types", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  description: text("description"),
-  colorCode: text("color_code"),
+export const leaveTypeSchema = z.object({
+  id: z.number().optional(),
+  name: z.string().min(1, "Name is required"),
+  description: z.string().optional(),
+  colorCode: z.string().optional(),
 });
 
-// Leave quotas for each employee
-export const leaveQuotas = pgTable("leave_quotas", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  leaveTypeId: integer("leave_type_id").notNull(),
-  totalQuota: integer("total_quota").notNull(),
-  usedQuota: integer("used_quota").notNull().default(0),
-  year: integer("year").notNull(),
+export const leaveQuotaSchema = z.object({
+  id: z.number().optional(),
+  userId: z.number(),
+  leaveTypeId: z.number(),
+  totalQuota: z.number().min(0),
+  usedQuota: z.number().min(0).default(0),
+  year: z.number(),
 });
 
-// Leave applications
-export const leaveApplications = pgTable("leave_applications", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  leaveTypeId: integer("leave_type_id").notNull(),
-  startDate: date("start_date").notNull(),
-  endDate: date("end_date").notNull(),
-  isFirstDayHalf: boolean("is_first_day_half").notNull().default(false),
-  isLastDayHalf: boolean("is_last_day_half").notNull().default(false),
-  totalDays: integer("total_days").notNull(),
-  reason: text("reason"),
-  status: text("status").notNull().default("pending"), // pending, approved, rejected
-  appliedAt: timestamp("applied_at").notNull().default(new Date()),
-  approvedBy: integer("approved_by"),
-  approvedAt: timestamp("approved_at"),
-  comments: text("comments"),
+export const leaveApplicationSchema = z.object({
+  id: z.number().optional(),
+  userId: z.number(),
+  leaveTypeId: z.number(),
+  startDate: z.date(),
+  endDate: z.date(),
+  isFirstDayHalf: z.boolean().default(false),
+  isLastDayHalf: z.boolean().default(false),
+  totalDays: z.number().min(0),
+  reason: z.string().optional(),
+  status: z.enum(["pending", "approved", "rejected"]).default("pending"),
+  appliedAt: z.date().default(() => new Date()),
+  approvedBy: z.number().optional(),
+  approvedAt: z.date().optional(),
+  comments: z.string().optional(),
 });
 
-// Holidays
-export const holidays = pgTable("holidays", {
-  id: serial("id").primaryKey(),
-  name: text("name").notNull(),
-  date: date("date").notNull(),
-  description: text("description"),
-  type: text("type").notNull().default("national"), // national, company, etc.
+export const holidaySchema = z.object({
+  id: z.number().optional(),
+  name: z.string().min(1, "Name is required"),
+  date: z.date(),
+  description: z.string().optional(),
+  type: z.enum(["national", "company"]).default("national"),
 });
 
-// Salary records
-export const salaries = pgTable("salaries", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull(),
-  month: integer("month").notNull(),
-  year: integer("year").notNull(),
-  baseSalary: integer("base_salary").notNull(),
-  deductions: integer("deductions").default(0),
-  bonus: integer("bonus").default(0),
-  netSalary: integer("net_salary").notNull(),
-  paymentStatus: text("payment_status").notNull().default("pending"), // pending, paid
-  paymentDate: date("payment_date"),
-  notes: text("notes"),
+export const salarySchema = z.object({
+  id: z.number().optional(),
+  userId: z.number(),
+  month: z.number().min(1).max(12),
+  year: z.number(),
+  baseSalary: z.number().min(0),
+  deductions: z.number().min(0).default(0),
+  bonus: z.number().min(0).default(0),
+  netSalary: z.number().min(0),
+  paymentStatus: z.enum(["pending", "paid"]).default("pending"),
+  paymentDate: z.date().optional(),
+  notes: z.string().optional(),
 });
 
-// Insert schemas using drizzle-zod
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  firstName: true,
-  lastName: true,
-  email: true,
-  role: true,
-  department: true,
-  position: true,
-  joinDate: true,
-  profileImage: true,
-  companyId: true,
-});
+// Types for all schemas
+export type User = z.infer<typeof userSchema>;
+export type Attendance = z.infer<typeof attendanceSchema>;
+export type LeaveType = z.infer<typeof leaveTypeSchema>;
+export type LeaveQuota = z.infer<typeof leaveQuotaSchema>;
+export type LeaveApplication = z.infer<typeof leaveApplicationSchema>;
+export type Holiday = z.infer<typeof holidaySchema>;
+export type Salary = z.infer<typeof salarySchema>;
 
-export const insertAttendanceSchema = createInsertSchema(attendances).pick({
-  userId: true,
-  date: true,
-  checkInTime: true,
-  checkOutTime: true,
-  status: true,
-  workingHours: true,
-  notes: true,
-});
-
-export const insertLeaveTypeSchema = createInsertSchema(leaveTypes).pick({
-  name: true,
-  description: true,
-  colorCode: true,
-});
-
-export const insertLeaveQuotaSchema = createInsertSchema(leaveQuotas).pick({
-  userId: true,
-  leaveTypeId: true,
-  totalQuota: true,
-  usedQuota: true,
-  year: true,
-});
-
-export const insertLeaveApplicationSchema = createInsertSchema(leaveApplications).pick({
-  userId: true,
-  leaveTypeId: true,
-  startDate: true,
-  endDate: true,
-  isFirstDayHalf: true,
-  isLastDayHalf: true,
-  totalDays: true,
-  reason: true,
-  status: true,
-  appliedAt: true,
-  approvedBy: true,
-  approvedAt: true,
-  comments: true,
-});
-
-export const insertHolidaySchema = createInsertSchema(holidays).pick({
-  name: true,
-  date: true,
-  description: true,
-  type: true,
-});
-
-export const insertSalarySchema = createInsertSchema(salaries).pick({
-  userId: true,
-  month: true,
-  year: true,
-  baseSalary: true,
-  deductions: true,
-  bonus: true,
-  netSalary: true,
-  paymentStatus: true,
-  paymentDate: true,
-  notes: true,
-});
-
-// Types for insert operations
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type InsertAttendance = z.infer<typeof insertAttendanceSchema>;
-export type InsertLeaveType = z.infer<typeof insertLeaveTypeSchema>;
-export type InsertLeaveQuota = z.infer<typeof insertLeaveQuotaSchema>;
-export type InsertLeaveApplication = z.infer<typeof insertLeaveApplicationSchema>;
-export type InsertHoliday = z.infer<typeof insertHolidaySchema>;
-export type InsertSalary = z.infer<typeof insertSalarySchema>;
-
-// Types for select operations
-export type User = typeof users.$inferSelect;
-export type Attendance = typeof attendances.$inferSelect;
-export type LeaveType = typeof leaveTypes.$inferSelect;
-export type LeaveQuota = typeof leaveQuotas.$inferSelect;
-export type LeaveApplication = typeof leaveApplications.$inferSelect;
-export type Holiday = typeof holidays.$inferSelect;
-export type Salary = typeof salaries.$inferSelect;
-
-// Extended schemas for auth
+// Auth schemas
 export const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 export type LoginData = z.infer<typeof loginSchema>;
+
+// Insert schemas (for creating new records)
+export const insertAttendanceSchema = attendanceSchema.omit({ id: true });
+export const insertLeaveApplicationSchema = leaveApplicationSchema.omit({ id: true });
+export const insertHolidaySchema = holidaySchema.omit({ id: true });
+export const insertSalarySchema = salarySchema.omit({ id: true });

@@ -1,16 +1,23 @@
 // Basic Express server setup for user authentication with MongoDB
 const express = require("express");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
-require('dotenv').config(); // Load environment variables from .env file
+require("dotenv").config(); // Load environment variables from .env file
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Middleware
+app.use(
+  cors({
+    origin: "http://localhost:5000", // Frontend URL
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
+  })
+);
 app.use(express.json());
-app.use(cors());
 
 // MongoDB User model
 const mongoose = require("mongoose");
@@ -20,11 +27,13 @@ const User = require("./models/User");
 const employeeRoutes = require("./routes/employeeRoutes");
 
 // Connect to MongoDB
-const mongo = "Connecting to MongoDB..."+ process.env.DATABASE_URL;
-console.log(mongo);
+console.log("Connecting to MongoDB...");
 
 mongoose
-  .connect(`${process.env.DATABASE_URL}/sforger-erp`, {})
+  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/sforger-erp", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
   .then(() => {
     console.log("Connected to MongoDB");
   })
@@ -43,7 +52,8 @@ const { z } = require("zod");
 const registerSchema = z.object({
   username: z.string().min(3),
   password: z.string().min(6),
-  fullName: z.string().min(1),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
   email: z.string().email(),
   role: z.string().optional(),
   department: z.string().optional(),
@@ -59,17 +69,29 @@ app.post("/api/register", async (req, res) => {
     const {
       username,
       password,
-      fullName,
+      firstName,
+      lastName,
       email,
       role,
       department,
       position,
       profileImage,
     } = parsed;
-    const existingUser = await User.findOne({ username });
+
+    // Check if user already exists
+    const existingUser = await User.findOne({
+      $or: [{ username }, { email }],
+    });
+
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({
+        message:
+          existingUser.username === username
+            ? "Username already exists"
+            : "Email already exists",
+      });
     }
+
     // Assign companyId logic
     let assignedRole = role || "employee";
     let companyId = "";
@@ -91,11 +113,12 @@ app.post("/api/register", async (req, res) => {
       }
       companyId = `SF-${lastId.toString().padStart(3, "0")}`;
     }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({
       username,
       password: hashedPassword,
-      fullName,
+      fullName: `${firstName} ${lastName}`,
       email,
       role: assignedRole,
       companyId,
@@ -103,12 +126,27 @@ app.post("/api/register", async (req, res) => {
       position,
       profileImage,
     });
+
     await newUser.save();
+
     // Don't return password
     const userObj = newUser.toObject();
     delete userObj.password;
-    res.status(201).json(userObj);
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: newUser._id, username: newUser.username },
+      process.env.JWT_SECRET || "secret",
+      { expiresIn: "1h" }
+    );
+
+    res.status(201).json({
+      message: "User registered successfully",
+      token,
+      user: userObj,
+    });
   } catch (err) {
+    console.error("Registration error:", err);
     if (err.name === "ZodError") {
       return res
         .status(400)

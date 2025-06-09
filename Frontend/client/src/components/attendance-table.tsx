@@ -134,23 +134,13 @@ export default function AttendanceTable() {
   // Format time for display
   const formatTime = (timeString: string | null) => {
     if (!timeString) return "--";
-
-    try {
-      const [hours, minutes] = timeString.split(":");
-      const hour = parseInt(hours, 10);
-      const isPM = hour >= 12;
-      const displayHour = hour % 12 || 12;
-
-      return `${displayHour}:${minutes} ${isPM ? "PM" : "AM"}`;
-    } catch (error) {
-      return timeString;
-    }
+    return format(new Date(timeString), "h:mm a");
   };
 
   // Format date for display
   const formatDate = (dateString: string) => {
     try {
-      return format(parseISO(dateString), "MMM dd, yyyy");
+      return format(new Date(dateString), "MMM dd, yyyy");
     } catch (error) {
       return dateString;
     }
@@ -218,102 +208,74 @@ export default function AttendanceTable() {
   return (
     <Card>
       <CardHeader>
-        <div className="sm:flex sm:items-center sm:justify-between">
+        <div className="flex justify-between items-center">
           <div>
             <CardTitle>Attendance Log</CardTitle>
-            <CardDescription>View your attendance records</CardDescription>
+            <CardDescription>
+              View your attendance history and status
+            </CardDescription>
           </div>
-
-          <div className="mt-3 sm:mt-0 sm:flex sm:items-center sm:space-x-3">
+          <div className="flex items-center space-x-4">
             <Select value={period} onValueChange={setPeriod}>
-              <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Select period" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="7">Last 7 days</SelectItem>
+                <SelectItem value="14">Last 14 days</SelectItem>
                 <SelectItem value="30">Last 30 days</SelectItem>
-                <SelectItem value="90">Last 90 days</SelectItem>
               </SelectContent>
             </Select>
-
-            <Button
-              variant="outline"
-              className="mt-3 sm:mt-0"
-              onClick={() => console.log("Export")}
-            >
-              <Download className="-ml-1 mr-2 h-5 w-5 text-gray-500" />
-              Export
+            <Button variant="outline" size="icon">
+              <Download className="h-4 w-4" />
             </Button>
           </div>
         </div>
       </CardHeader>
-
       <CardContent>
         {isLoading ? (
           <div className="space-y-4">
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
-            <Skeleton className="h-8 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Check In</TableHead>
                     <TableHead>Check Out</TableHead>
-                    <TableHead>Working Hours</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Working Hours</TableHead>
+                    <TableHead>Notes</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedData.length > 0 ? (
-                    paginatedData.map((record: any) => (
-                      <TableRow key={record.id}>
-                        <TableCell className="font-medium">
-                          {formatDate(record.date)}
-                        </TableCell>
-                        <TableCell>{formatTime(record.checkInTime)}</TableCell>
-                        <TableCell>{formatTime(record.checkOutTime)}</TableCell>
-                        <TableCell>{record.workingHours || "--"}</TableCell>
-                        <TableCell>{getStatusBadge(record.status)}</TableCell>
-                      </TableRow>
-                    ))
-                  ) : (
-                    <TableRow>
-                      <TableCell
-                        colSpan={5}
-                        className="text-center py-6 text-gray-500"
-                      >
-                        No attendance records found for this period
+                  {paginatedData.map((record) => (
+                    <TableRow key={record._id}>
+                      <TableCell>{formatDate(record.date)}</TableCell>
+                      <TableCell>
+                        {record.checkIn
+                          ? formatTime(record.checkIn.time)
+                          : "--"}
                       </TableCell>
+                      <TableCell>
+                        {record.checkOut
+                          ? formatTime(record.checkOut.time)
+                          : "--"}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(record.status)}</TableCell>
+                      <TableCell>{record.workHours || "--"}</TableCell>
+                      <TableCell>{record.notes || "--"}</TableCell>
                     </TableRow>
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </div>
-
-            {paginatedData.length > 0 && (
-              <div className="flex items-center justify-between mt-4">
-                <div className="text-sm text-gray-700">
-                  Showing{" "}
-                  <span className="font-medium">
-                    {Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)}
-                  </span>{" "}
-                  to{" "}
-                  <span className="font-medium">
-                    {Math.min(currentPage * itemsPerPage, totalItems)}
-                  </span>{" "}
-                  of <span className="font-medium">{totalItems}</span> entries
-                </div>
-
-                {renderPagination()}
-              </div>
-            )}
+            {renderPagination()}
           </>
         )}
       </CardContent>

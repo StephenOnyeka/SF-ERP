@@ -12,30 +12,64 @@ export default function AttendanceStatus() {
     format(new Date(), "h:mm a")
   );
   const { toast } = useToast();
-  
+
   // Update time every minute
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentTime(format(new Date(), "h:mm a"));
     }, 60000);
-    
+
     return () => clearInterval(interval);
   }, []);
-  
+
   // Get today's date in YYYY-MM-DD format
   const today = new Date().toISOString().split("T")[0];
-  
+
   // Get attendance data for today
-  const { data: attendanceData, isLoading: isLoadingAttendance } = useQuery<any>({
-    queryKey: ["/api/attendance", today],
-    refetchInterval: 60000, // Refetch every minute
-  });
-  
+  const { data: attendanceData, isLoading: isLoadingAttendance } =
+    useQuery<any>({
+      queryKey: ["/api/attendance", today],
+      refetchInterval: 60000, // Refetch every minute
+    });
+
+  // Get current location
+  const getCurrentLocation = () => {
+    return new Promise<{ latitude: number; longitude: number }>(
+      (resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Geolocation is not supported by your browser"));
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+          },
+          (error) => {
+            reject(new Error("Unable to retrieve your location"));
+          }
+        );
+      }
+    );
+  };
+
   // Check-in mutation
   const checkInMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/attendance/clock-in");
-      return await res.json();
+      try {
+        const location = await getCurrentLocation();
+        const res = await apiRequest("POST", "/api/attendance/check-in", {
+          location,
+        });
+        return await res.json();
+      } catch (error) {
+        throw new Error(
+          "Failed to get location. Please enable location services."
+        );
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
@@ -52,12 +86,21 @@ export default function AttendanceStatus() {
       });
     },
   });
-  
+
   // Check-out mutation
   const checkOutMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/attendance/clock-out");
-      return await res.json();
+      try {
+        const location = await getCurrentLocation();
+        const res = await apiRequest("POST", "/api/attendance/check-out", {
+          location,
+        });
+        return await res.json();
+      } catch (error) {
+        throw new Error(
+          "Failed to get location. Please enable location services."
+        );
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
@@ -74,35 +117,29 @@ export default function AttendanceStatus() {
       });
     },
   });
-  
+
   // Check if user has already checked in or out today
   const hasTodaysAttendance = attendanceData?.some((record: any) => {
     const recordDate = new Date(record.date).toISOString().split("T")[0];
     return recordDate === today;
   });
-  
+
   const todayAttendance = hasTodaysAttendance
     ? attendanceData.find((record: any) => {
         const recordDate = new Date(record.date).toISOString().split("T")[0];
         return recordDate === today;
       })
     : null;
-  
-  const hasCheckedIn = todayAttendance?.checkInTime;
-  const hasCheckedOut = todayAttendance?.checkOutTime;
-  
+
+  const hasCheckedIn = todayAttendance?.checkIn?.time;
+  const hasCheckedOut = todayAttendance?.checkOut?.time;
+
   // Format time for display
   const formatTimeFromDB = (timeString: string) => {
     if (!timeString) return "";
-    
-    const [hours, minutes] = timeString.split(":");
-    const hour = parseInt(hours, 10);
-    const isPM = hour >= 12;
-    const displayHour = hour % 12 || 12;
-    
-    return `${displayHour}:${minutes} ${isPM ? "PM" : "AM"}`;
+    return format(new Date(timeString), "h:mm a");
   };
-  
+
   return (
     <Card>
       <CardHeader className="border-b px-6 py-3">
@@ -120,7 +157,7 @@ export default function AttendanceStatus() {
               </span>
             </div>
           </div>
-          
+
           <p className="text-sm text-gray-600 mb-4">
             Status:{" "}
             {isLoadingAttendance ? (
@@ -128,18 +165,19 @@ export default function AttendanceStatus() {
             ) : hasCheckedIn ? (
               hasCheckedOut ? (
                 <span className="font-medium text-blue-600">
-                  Checked Out ({formatTimeFromDB(todayAttendance.checkOutTime)})
+                  Checked Out ({formatTimeFromDB(todayAttendance.checkOut.time)}
+                  )
                 </span>
               ) : (
                 <span className="font-medium text-green-600">
-                  Checked In ({formatTimeFromDB(todayAttendance.checkInTime)})
+                  Checked In ({formatTimeFromDB(todayAttendance.checkIn.time)})
                 </span>
               )
             ) : (
               <span className="font-medium text-gray-600">Not Checked In</span>
             )}
           </p>
-          
+
           <div className="flex space-x-4">
             <Button
               onClick={() => checkInMutation.mutate()}
