@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { API_BASE_URL } from "@/config/api";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -30,16 +31,22 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  console.log(`[API] ${method} ${url}`, data ? 'with data' : '');
+  // Prepend API_BASE_URL if the URL doesn't start with http
+  const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
   
-  const res = await fetch(url, {
+  console.log(`[API] ${method} ${fullUrl}`, data ? 'with data' : '');
+  
+  const res = await fetch(fullUrl, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      "Accept": "application/json",
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
 
-  console.log(`[API] ${method} ${url} response:`, res.status);
+  console.log(`[API] ${method} ${fullUrl} response:`, res.status);
   
   await throwIfResNotOk(res);
   return res;
@@ -52,18 +59,24 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const url = queryKey[0] as string;
-    console.log(`[QUERY] Fetching ${url}`);
+    // Prepend API_BASE_URL if the URL doesn't start with http
+    const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
     
-    const res = await fetch(url, {
+    console.log(`[QUERY] Fetching ${fullUrl}`);
+    
+    const res = await fetch(fullUrl, {
+      headers: {
+        "Accept": "application/json",
+      },
       credentials: "include",
       // Add random query param to prevent caching
       cache: "no-store",
     });
 
-    console.log(`[QUERY] ${url} response:`, res.status);
+    console.log(`[QUERY] ${fullUrl} response:`, res.status);
     
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      console.log(`[QUERY] Returning null for 401 at ${url}`);
+      console.log(`[QUERY] Returning null for 401 at ${fullUrl}`);
       return null;
     }
 

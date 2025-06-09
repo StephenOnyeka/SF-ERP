@@ -10,6 +10,12 @@ import {
   insertLeaveTypeSchema,
   insertHolidaySchema,
   insertSalarySchema,
+  userSchema,
+  attendanceSchema,
+  leaveApplicationSchema,
+  leaveQuotaSchema,
+  holidaySchema,
+  salarySchema
 } from "@shared/schema";
 
 // Middleware to check if user is authenticated
@@ -808,6 +814,155 @@ export async function registerRoutes(app: Express): Promise<Server> {
       pendingCount: report.filter(r => r.salary && r.salary.paymentStatus === "pending").length,
       noSalaryCount: report.filter(r => !r.salary).length
     });
+  });
+
+  // User routes
+  app.post('/api/register', async (req, res) => {
+    try {
+      const userData = userSchema.parse(req.body);
+      const user = await storage.createUser(userData);
+      const { password, ...userWithoutPassword } = user;
+      res.status(201).json(userWithoutPassword);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Validation error', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Server error', error: (error as Error).message });
+      }
+    }
+  });
+
+  app.get('/api/users/:id', async (req, res) => {
+    try {
+      const user = await storage.getUser(Number(req.params.id));
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error: (error as Error).message });
+    }
+  });
+
+  // Attendance routes
+  app.get('/api/attendances', async (req, res) => {
+    try {
+      const attendances = await storage.getAttendances();
+      res.json(attendances);
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error: (error as Error).message });
+    }
+  });
+
+  app.post('/api/attendances', async (req, res) => {
+    try {
+      const attendanceData = attendanceSchema.parse(req.body);
+      const attendance = await storage.createAttendance(attendanceData);
+      res.status(201).json(attendance);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Validation error', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Server error', error: (error as Error).message });
+      }
+    }
+  });
+
+  // Leave application routes
+  app.get('/api/leave-applications', async (req, res) => {
+    try {
+      const applications = await storage.getLeaveApplications();
+      res.json(applications);
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error: (error as Error).message });
+    }
+  });
+
+  app.post('/api/leave-applications', async (req, res) => {
+    try {
+      const applicationData = leaveApplicationSchema.parse(req.body);
+      const application = await storage.createLeaveApplication(applicationData);
+      res.status(201).json(application);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Validation error', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Server error', error: (error as Error).message });
+      }
+    }
+  });
+
+  // Leave quota routes
+  app.get('/api/leave-quotas', async (req, res) => {
+    try {
+      const quotas = await storage.getLeaveQuotas();
+      res.json(quotas);
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error: (error as Error).message });
+    }
+  });
+
+  app.post('/api/leave-quotas', async (req, res) => {
+    try {
+      const quotaData = leaveQuotaSchema.parse(req.body);
+      const quota = await storage.createLeaveQuota(quotaData);
+      res.status(201).json(quota);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Validation error', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Server error', error: (error as Error).message });
+      }
+    }
+  });
+
+  // Holiday routes
+  app.get('/api/holidays', async (req, res) => {
+    try {
+      const holidays = await storage.getHolidays();
+      res.json(holidays);
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error: (error as Error).message });
+    }
+  });
+
+  app.post('/api/holidays', async (req, res) => {
+    try {
+      const holidayData = holidaySchema.parse(req.body);
+      const holiday = await storage.createHoliday(holidayData);
+      res.status(201).json(holiday);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Validation error', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Server error', error: (error as Error).message });
+      }
+    }
+  });
+
+  // Salary routes
+  app.get('/api/salaries', async (req, res) => {
+    try {
+      const salaries = await storage.getSalaries();
+      res.json(salaries);
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error: (error as Error).message });
+    }
+  });
+
+  app.post('/api/salaries', async (req, res) => {
+    try {
+      const salaryData = salarySchema.parse(req.body);
+      const salary = await storage.createSalary(salaryData);
+      res.status(201).json(salary);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ message: 'Validation error', errors: error.errors });
+      } else {
+        res.status(500).json({ message: 'Server error', error: (error as Error).message });
+      }
+    }
   });
 
   const httpServer = createServer(app);

@@ -6,6 +6,7 @@ import {
   LeaveApplication, InsertLeaveApplication, Holiday, InsertHoliday,
   Salary, InsertSalary 
 } from "@shared/schema";
+import { z } from 'zod';
 
 const MemoryStore = createMemoryStore(session);
 

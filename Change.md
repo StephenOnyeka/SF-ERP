@@ -1,0 +1,1 @@
+Of recent I was able to change the frontend storage from Drizzle ORM and postgresql to Local Storage and fetching data from the backend.
