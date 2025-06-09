@@ -4,7 +4,11 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema";
+import {
+  insertUserSchema,
+  User as SelectUser,
+  InsertUser,
+} from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -26,12 +30,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data: user,
     error,
     isLoading,
-    refetch
+    refetch,
   } = useQuery<SelectUser | undefined, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
-  
+
   // For debugging
   useEffect(() => {
     console.log("Auth state:", { user, isLoading, error });
@@ -42,9 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Login attempt with:", credentials.username);
       try {
         const res = await apiRequest("POST", "/api/login", credentials);
-        const userData = await res.json();
-        console.log("Login success, received user data:", userData);
-        return userData;
+        const data = await res.json();
+        console.log("Login success, received user data:", data);
+        return data.user;
       } catch (err) {
         console.error("Login error:", err);
         throw err;
@@ -54,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Login mutation success, setting user data");
       queryClient.setQueryData(["/api/user"], user);
       refetch(); // Refetch user data to ensure consistency
+      // Redirect to dashboard after successful login
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       console.error("Login mutation error:", error);
@@ -70,9 +76,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Register attempt with:", credentials.username);
       try {
         const res = await apiRequest("POST", "/api/register", credentials);
-        const userData = await res.json();
-        console.log("Registration success, received user data:", userData);
-        return userData;
+        const data = await res.json();
+        console.log("Registration success, received user data:", data);
+        return data.user;
       } catch (err) {
         console.error("Registration error:", err);
         throw err;
@@ -82,6 +88,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Registration mutation success, setting user data");
       queryClient.setQueryData(["/api/user"], user);
       refetch(); // Refetch user data to ensure consistency
+      // Redirect to dashboard after successful registration
+      window.location.href = "/";
     },
     onError: (error: Error) => {
       console.error("Registration mutation error:", error);

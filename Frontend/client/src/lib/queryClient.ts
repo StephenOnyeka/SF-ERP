@@ -26,31 +26,33 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
-export async function apiRequest(
+export const apiRequest = async (
   method: string,
-  url: string,
-  data?: unknown | undefined,
-): Promise<Response> {
-  // Prepend API_BASE_URL if the URL doesn't start with http
-  const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+  endpoint: string,
+  data?: any
+): Promise<Response> => {
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  const url = `${baseUrl}${endpoint}`;
   
-  console.log(`[API] ${method} ${fullUrl}`, data ? 'with data' : '');
-  
-  const res = await fetch(fullUrl, {
+  console.log(`[API] ${method} ${url} with data`, data);
+
+  const response = await fetch(url, {
     method,
     headers: {
-      ...(data ? { "Content-Type": "application/json" } : {}),
-      "Accept": "application/json",
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
     },
+    credentials: 'include', // Include cookies in the request
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
   });
 
-  console.log(`[API] ${method} ${fullUrl} response:`, res.status);
-  
-  await throwIfResNotOk(res);
-  return res;
-}
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'An error occurred' }));
+    throw new Error(error.message || 'Request failed');
+  }
+
+  return response;
+};
 
 type UnauthorizedBehavior = "returnNull" | "throw";
 export const getQueryFn: <T>(options: {

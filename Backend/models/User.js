@@ -1,5 +1,6 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
+const { scryptAsync, timingSafeEqual } = require("crypto");
 
 const userSchema = new mongoose.Schema(
   {
@@ -78,7 +79,20 @@ userSchema.pre("save", async function (next) {
 
 // Method to compare password
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+  try {
+    // Check if password is bcrypt hashed
+    if (this.password.startsWith('$2')) {
+      return bcrypt.compare(candidatePassword, this.password);
+    }
+    
+    // Handle scrypt hashed password
+    const [hash, salt] = this.password.split('.');
+    const buf = (await scryptAsync(candidatePassword, salt, 64)) as Buffer;
+    return timingSafeEqual(Buffer.from(hash, 'hex'), buf);
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    return false;
+  }
 };
 
 // Add index for faster queries

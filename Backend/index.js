@@ -115,6 +115,7 @@ app.post("/api/register", async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+
     const newUser = new User({
       username,
       password: hashedPassword,
@@ -140,9 +141,16 @@ app.post("/api/register", async (req, res) => {
       { expiresIn: "1h" }
     );
 
+    // Set the token in a cookie
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 3600000, // 1 hour
+    });
+
     res.status(201).json({
       message: "User registered successfully",
-      token,
       user: userObj,
     });
   } catch (err) {
@@ -158,26 +166,52 @@ app.post("/api/register", async (req, res) => {
 
 // Signin route (MongoDB)
 app.post("/api/login", async (req, res) => {
-  const { username, password } = req.body;
+  console.log("Login request received:", req.body);
+  const { username, email, password } = req.body;
+  
   try {
-    const user = await User.findOne({ username });
+    // Find user by either username or email
+    const user = await User.findOne({
+      $or: [
+        { username: username || email },
+        { email: email || username }
+      ]
+    });
+
     if (!user) {
+      console.log("Login failed: User not found");
       return res.status(400).json({ message: "Invalid credentials" });
     }
-    const isMatch = await bcrypt.compare(password, user.password);
+
+    // Compare password
+    const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      console.log("Login failed: Invalid password");
       return res.status(400).json({ message: "Invalid credentials" });
     }
+
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id, username: user.username },
       process.env.JWT_SECRET || "secret",
       { expiresIn: "1h" }
     );
+
+    // Set the token in a cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax', // Changed from 'strict' to 'lax' for development
+      maxAge: 3600000 // 1 hour
+    });
+
     const userObj = user.toObject();
     delete userObj.password;
-    res.json({ token, user: userObj });
+    
+    console.log("Login successful for user:", user.username);
+    res.json({ user: userObj });
   } catch (err) {
+    console.error("Login error:", err);
     res.status(500).json({ message: "Server error" });
   }
 });

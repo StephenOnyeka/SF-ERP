@@ -4,28 +4,25 @@ import { useAuth } from "@/hooks/use-auth";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { 
-  Building2, 
-  Loader2, 
-  UserCircle, 
-  Lock, 
-  Mail, 
-  User, 
-  Briefcase, 
-  Building, 
-  CalendarClock, 
-  CalendarCheck, 
-  Calculator, 
+import {
+  Building2,
+  Loader2,
+  UserCircle,
+  Lock,
+  Mail,
+  User,
+  Briefcase,
+  Building,
+  CalendarClock,
+  CalendarCheck,
+  Calculator,
   BarChart3,
-  CheckCircle 
+  CheckCircle,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ApiCheck } from "@/components/api-check";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -101,6 +98,7 @@ export default function AuthPage() {
   });
 
   const onRegisterSubmit = (data: z.infer<typeof registerSchema>) => {
+    console.log("Submitting registration form:", data);
     registerMutation.mutate(data);
   };
 
@@ -121,26 +119,32 @@ export default function AuthPage() {
       <div className="relative flex-1 bg-gradient-to-br from-primary-900 via-primary-800 to-primary-700 text-white p-8 flex flex-col justify-center items-center hidden md:flex overflow-hidden">
         {/* Background pattern - subtle grid */}
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djZoNnYtNmgtNnptMC0zMHY2aDZ2LTZoLTZ6Ii8+PC9nPjwvZz48L3N2Zz4=')] opacity-40"></div>
-        
+
         {/* Abstract shapes with more depth */}
         <div className="absolute top-20 right-20 w-80 h-80 rounded-full bg-gradient-to-br from-blue-400/30 to-indigo-600/20 opacity-40 blur-3xl animate-float"></div>
         <div className="absolute -bottom-10 -left-10 w-60 h-60 rounded-full bg-gradient-to-tr from-indigo-500/20 to-purple-600/30 opacity-40 blur-3xl animate-float-delay"></div>
         <div className="absolute top-1/2 left-1/3 w-40 h-40 rounded-full bg-gradient-to-r from-cyan-400/20 to-blue-500/20 opacity-40 blur-3xl animate-float-slow"></div>
-        
+
         <div className="relative z-10 max-w-md mx-auto">
           <div className="flex items-center mb-12 fade-in-1">
             <div className="bg-white/10 p-3 rounded-lg backdrop-blur-sm shadow-lg border border-white/20">
               <Building2 className="h-10 w-10 text-white drop-shadow-md" />
             </div>
-            <h2 className="text-3xl font-bold text-white ml-4 tracking-tight drop-shadow-md">Sforger ERP</h2>
+            <h2 className="text-3xl font-bold text-white ml-4 tracking-tight drop-shadow-md">
+              Sforger ERP
+            </h2>
           </div>
-          
+
           <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight fade-in-2 tracking-tight">
-            Transform Your <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-cyan-100">Business Operations</span>
+            Transform Your{" "}
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-cyan-100">
+              Business Operations
+            </span>
           </h1>
-          
+
           <p className="text-xl text-gray-100 mb-10 leading-relaxed fade-in-3">
-            A comprehensive solution for managing employees, attendance, leave, and payroll—all in one powerful platform.
+            A comprehensive solution for managing employees, attendance, leave,
+            and payroll—all in one powerful platform.
           </p>
 
           <div className="grid grid-cols-2 gap-6 mb-10 fade-in-4">
@@ -151,9 +155,11 @@ export default function AuthPage() {
                 </div>
                 <h3 className="font-semibold text-lg ml-3">Employee Mgmt</h3>
               </div>
-              <p className="text-gray-200">Complete HR solution with detailed employee profiles</p>
+              <p className="text-gray-200">
+                Complete HR solution with detailed employee profiles
+              </p>
             </div>
-            
+
             <div className="group p-5 rounded-xl backdrop-blur-sm bg-white/10 border border-white/20 shadow-xl hover:bg-white/15 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-primary-500/20">
               <div className="flex items-center mb-3">
                 <div className="p-2 rounded-lg bg-green-500/20 group-hover:bg-green-500/30 transition-colors">
@@ -161,9 +167,11 @@ export default function AuthPage() {
                 </div>
                 <h3 className="font-semibold text-lg ml-3">Attendance</h3>
               </div>
-              <p className="text-gray-200">Automated check-ins with real-time tracking</p>
+              <p className="text-gray-200">
+                Automated check-ins with real-time tracking
+              </p>
             </div>
-            
+
             <div className="group p-5 rounded-xl backdrop-blur-sm bg-white/10 border border-white/20 shadow-xl hover:bg-white/15 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-primary-500/20">
               <div className="flex items-center mb-3">
                 <div className="p-2 rounded-lg bg-purple-500/20 group-hover:bg-purple-500/30 transition-colors">
@@ -171,9 +179,11 @@ export default function AuthPage() {
                 </div>
                 <h3 className="font-semibold text-lg ml-3">Leave Management</h3>
               </div>
-              <p className="text-gray-200">Streamlined leave request and approval system</p>
+              <p className="text-gray-200">
+                Streamlined leave request and approval system
+              </p>
             </div>
-            
+
             <div className="group p-5 rounded-xl backdrop-blur-sm bg-white/10 border border-white/20 shadow-xl hover:bg-white/15 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-primary-500/20">
               <div className="flex items-center mb-3">
                 <div className="p-2 rounded-lg bg-amber-500/20 group-hover:bg-amber-500/30 transition-colors">
@@ -181,10 +191,12 @@ export default function AuthPage() {
                 </div>
                 <h3 className="font-semibold text-lg ml-3">Analytics</h3>
               </div>
-              <p className="text-gray-200">Real-time reports and data-driven insights</p>
+              <p className="text-gray-200">
+                Real-time reports and data-driven insights
+              </p>
             </div>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mt-8 fade-in-5 bg-white/10 p-4 rounded-xl backdrop-blur-sm border border-white/20">
             <div className="flex flex-wrap gap-4 justify-center sm:justify-start mb-4 sm:mb-0">
               <div className="flex items-center">
@@ -202,7 +214,7 @@ export default function AuthPage() {
             </div>
           </div>
         </div>
-        
+
         <div className="absolute bottom-4 left-0 right-0 text-center text-sm text-gray-300 opacity-70">
           &copy; {new Date().getFullYear()} Sforger ERP. All rights reserved.
         </div>
@@ -215,17 +227,19 @@ export default function AuthPage() {
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary-100 rounded-full mix-blend-multiply opacity-30 blur-3xl transform -translate-x-32 -translate-y-16"></div>
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-100 rounded-full mix-blend-multiply opacity-30 blur-3xl transform translate-x-16 translate-y-8"></div>
         </div>
-        
+
         <div className="w-full max-w-md relative z-10">
           {/* Mobile Header (visible only on small screens) */}
           <div className="md:hidden text-center mb-8">
             <div className="inline-flex items-center justify-center p-3 bg-gradient-to-br from-primary-600 to-primary-700 rounded-xl shadow-lg mb-4">
               <Building2 className="h-8 w-8 text-white" />
             </div>
-            <h1 className="text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary-700 to-primary-900">Sforger ERP</h1>
+            <h1 className="text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-primary-700 to-primary-900">
+              Sforger ERP
+            </h1>
             <p className="text-gray-600">Enterprise Resource Planning System</p>
           </div>
-          
+
           <div className="text-center mb-6">
             <h2 className="text-3xl font-bold mb-2 text-gray-800 tracking-tight">
               {activeTab === "login" ? "Welcome back" : "Get started"}
@@ -235,24 +249,46 @@ export default function AuthPage() {
                 ? "Sign in to your account to continue"
                 : "Create your account to join Sforger ERP"}
             </p>
-            
+
             <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100 shadow-sm">
-              <p className="font-medium mb-3 text-primary-800">Demo credentials:</p>
+              <p className="font-medium mb-3 text-primary-800">
+                Demo credentials:
+              </p>
               <div className="grid grid-cols-2 gap-3 text-left">
                 <div className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-shadow">
                   <p className="font-medium text-primary-700 mb-1">Admin</p>
-                  <p className="text-xs text-gray-600">username: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">admin</span></p>
-                  <p className="text-xs text-gray-600">password: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">password</span></p>
+                  <p className="text-xs text-gray-600">
+                    username:{" "}
+                    <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">
+                      admin
+                    </span>
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    password:{" "}
+                    <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">
+                      password
+                    </span>
+                  </p>
                 </div>
                 <div className="bg-white p-3 rounded-lg border border-blue-100 shadow-sm hover:shadow-md transition-shadow">
                   <p className="font-medium text-primary-700 mb-1">Employee</p>
-                  <p className="text-xs text-gray-600">username: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">employee</span></p>
-                  <p className="text-xs text-gray-600">password: <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">password</span></p>
+                  <p className="text-xs text-gray-600">
+                    username:{" "}
+                    <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">
+                      employee
+                    </span>
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    password:{" "}
+                    <span className="font-mono bg-gray-100 px-1 py-0.5 rounded">
+                      password
+                    </span>
+                  </p>
                 </div>
               </div>
             </div>
           </div>
-          
+
           {/* API Connection Check */}
           <ApiCheck />
 
@@ -264,11 +300,17 @@ export default function AuthPage() {
               className="w-full"
             >
               <TabsList className="grid w-full grid-cols-2 mb-6 p-1 bg-gray-100 rounded-lg">
-                <TabsTrigger value="login" className="rounded-md data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary-600 data-[state=active]:to-primary-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200">
+                <TabsTrigger
+                  value="login"
+                  className="rounded-md data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary-600 data-[state=active]:to-primary-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
+                >
                   <User className="h-4 w-4 mr-2" />
                   Login
                 </TabsTrigger>
-                <TabsTrigger value="register" className="rounded-md data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary-600 data-[state=active]:to-primary-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200">
+                <TabsTrigger
+                  value="register"
+                  className="rounded-md data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary-600 data-[state=active]:to-primary-700 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-200"
+                >
                   <UserCircle className="h-4 w-4 mr-2" />
                   Register
                 </TabsTrigger>
@@ -357,11 +399,15 @@ export default function AuthPage() {
                             </a>
                           </div>
                         </div>
-                        
+
                         {loginMutation.error && (
-                          <Alert variant="destructive" className="animate-fadeIn">
+                          <Alert
+                            variant="destructive"
+                            className="animate-fadeIn"
+                          >
                             <AlertDescription>
-                              {loginMutation.error.message || "Invalid credentials. Please try again."}
+                              {loginMutation.error.message ||
+                                "Invalid credentials. Please try again."}
                             </AlertDescription>
                           </Alert>
                         )}
@@ -403,10 +449,7 @@ export default function AuthPage() {
                               <FormItem>
                                 <FormLabel>First Name</FormLabel>
                                 <FormControl>
-                                  <Input
-                                    placeholder="John"
-                                    {...field}
-                                  />
+                                  <Input placeholder="John" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -420,10 +463,7 @@ export default function AuthPage() {
                               <FormItem>
                                 <FormLabel>Last Name</FormLabel>
                                 <FormControl>
-                                  <Input
-                                    placeholder="Smith"
-                                    {...field}
-                                  />
+                                  <Input placeholder="Smith" {...field} />
                                 </FormControl>
                                 <FormMessage />
                               </FormItem>
@@ -539,18 +579,22 @@ export default function AuthPage() {
                             )}
                           />
                         </div>
-                        
+
                         {registerMutation.error && (
-                          <Alert variant="destructive" className="animate-fadeIn">
+                          <Alert
+                            variant="destructive"
+                            className="animate-fadeIn"
+                          >
                             <AlertDescription>
-                              {registerMutation.error.message || "There was an error creating your account."}
+                              {registerMutation.error.message ||
+                                "There was an error creating your account."}
                             </AlertDescription>
                           </Alert>
                         )}
 
                         <Button
                           type="submit"
-                          className="w-full mt-6 text-lg py-6 font-medium bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-lg"
+                          className="w-full"
                           disabled={registerMutation.isPending}
                         >
                           {registerMutation.isPending ? (
@@ -559,7 +603,7 @@ export default function AuthPage() {
                               Creating account...
                             </>
                           ) : (
-                            "Create Account"
+                            "Create account"
                           )}
                         </Button>
                       </form>
