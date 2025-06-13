@@ -1,6 +1,9 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-const { scryptAsync, timingSafeEqual } = require("crypto");
+const { scrypt, randomBytes, timingSafeEqual } = require("crypto");
+const { promisify } = require("util");
+
+const scryptAsync = promisify(scrypt);
 
 const userSchema = new mongoose.Schema(
   {
@@ -69,10 +72,13 @@ userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
   try {
+    console.log("Hashing password for user:", this.username);
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+    console.log("Password hashed successfully");
     next();
   } catch (error) {
+    console.error("Password hashing error:", error);
     next(error);
   }
 });
@@ -80,17 +86,12 @@ userSchema.pre("save", async function (next) {
 // Method to compare password
 userSchema.methods.comparePassword = async function (candidatePassword) {
   try {
-    // Check if password is bcrypt hashed
-    if (this.password.startsWith('$2')) {
-      return bcrypt.compare(candidatePassword, this.password);
-    }
-    
-    // Handle scrypt hashed password
-    const [hash, salt] = this.password.split('.');
-    const buf = (await scryptAsync(candidatePassword, salt, 64)) as Buffer;
-    return timingSafeEqual(Buffer.from(hash, 'hex'), buf);
+    console.log("Comparing passwords for user:", this.username);
+    const isMatch = await bcrypt.compare(candidatePassword, this.password);
+    console.log("Password comparison result:", isMatch);
+    return isMatch;
   } catch (error) {
-    console.error('Password comparison error:', error);
+    console.error("Password comparison error:", error);
     return false;
   }
 };
