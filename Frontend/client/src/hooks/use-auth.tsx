@@ -52,19 +52,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res = await apiRequest("POST", "/api/login", credentials);
         const userData = await res.json();
         console.log("Login success, received user data:", userData);
-        // Store token and user data
-        if (userData.token) {
-          localStorage.setItem("token", userData.token);
-        }
         return userData;
       } catch (err) {
         console.error("Login error:", err);
         throw err;
       }
     },
-    onSuccess: (userData: SelectUser) => {
+    onSuccess: (user: SelectUser) => {
       console.log("Login mutation success, setting user data");
-      queryClient.setQueryData(["/api/user"], userData);
+      queryClient.setQueryData(["/api/user"], user);
       refetch(); // Refetch user data to ensure consistency
     },
     onError: (error: Error) => {

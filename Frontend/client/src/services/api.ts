@@ -1,9 +1,10 @@
 import axios from 'axios';
 import { storage } from '../utils/storage';
+import api from '../lib/api';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-const api = axios.create({
+const apiInstance = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -11,7 +12,7 @@ const api = axios.create({
 });
 
 // Request interceptor for adding auth token
-api.interceptors.request.use(
+apiInstance.interceptors.request.use(
   (config) => {
     const token = storage.get('token', '');
     if (token) {
@@ -25,7 +26,7 @@ api.interceptors.request.use(
 );
 
 // Response interceptor for handling errors
-api.interceptors.response.use(
+apiInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
@@ -41,42 +42,43 @@ export const authService = {
   login: async (credentials: { email: string; password: string }) => {
     const response = await api.post('/auth/login', credentials);
     const { token, user } = response.data;
-    storage.set('token', token);
-    storage.set('user', user);
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify(user));
     return response.data;
   },
 
   logout: () => {
-    storage.remove('token');
-    storage.remove('user');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
   },
 
   getCurrentUser: () => {
-    return storage.get('user', null);
+    const userStr = localStorage.getItem('user');
+    return userStr ? JSON.parse(userStr) : null;
   },
 };
 
 export const dataService = {
   // Generic CRUD operations
   get: async <T>(endpoint: string) => {
-    const response = await api.get<T>(endpoint);
+    const response = await apiInstance.get<T>(endpoint);
     return response.data;
   },
 
   post: async <T>(endpoint: string, data: any) => {
-    const response = await api.post<T>(endpoint, data);
+    const response = await apiInstance.post<T>(endpoint, data);
     return response.data;
   },
 
   put: async <T>(endpoint: string, data: any) => {
-    const response = await api.put<T>(endpoint, data);
+    const response = await apiInstance.put<T>(endpoint, data);
     return response.data;
   },
 
   delete: async <T>(endpoint: string) => {
-    const response = await api.delete<T>(endpoint);
+    const response = await apiInstance.delete<T>(endpoint);
     return response.data;
   },
 };
 
-export default api; 
+export default apiInstance; 

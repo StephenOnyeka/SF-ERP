@@ -33,21 +33,22 @@ export async function apiRequest(
 ): Promise<Response> {
   // Prepend API_BASE_URL if the URL doesn't start with http
   const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
-  
+  const token = localStorage.getItem("token");
+  const headers: Record<string, string> = {
+    ...(data ? { "Content-Type": "application/json" } : {}),
+    "Accept": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
   console.log(`[API] ${method} ${fullUrl}`, data ? 'with data' : '');
-  
   const res = await fetch(fullUrl, {
     method,
-    headers: {
-      ...(data ? { "Content-Type": "application/json" } : {}),
-      "Accept": "application/json",
-    },
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
-
   console.log(`[API] ${method} ${fullUrl} response:`, res.status);
-  
   await throwIfResNotOk(res);
   return res;
 }
@@ -61,25 +62,25 @@ export const getQueryFn: <T>(options: {
     const url = queryKey[0] as string;
     // Prepend API_BASE_URL if the URL doesn't start with http
     const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
-    
+    const token = localStorage.getItem("token");
+    const headers: Record<string, string> = {
+      "Accept": "application/json",
+    };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
     console.log(`[QUERY] Fetching ${fullUrl}`);
-    
     const res = await fetch(fullUrl, {
-      headers: {
-        "Accept": "application/json",
-      },
+      headers,
       credentials: "include",
       // Add random query param to prevent caching
       cache: "no-store",
     });
-
     console.log(`[QUERY] ${fullUrl} response:`, res.status);
-    
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       console.log(`[QUERY] Returning null for 401 at ${fullUrl}`);
       return null;
     }
-
     await throwIfResNotOk(res);
     return await res.json();
   };

@@ -9,16 +9,25 @@ const api = axios.create({
   },
 });
 
-// Add request interceptor
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+// Add token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Response interceptor for handling errors
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    if (error.response?.status === 401) {
+      // Handle unauthorized access
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/auth';
     }
-    return config;
-  },
-  (error) => {
     return Promise.reject(error);
   }
 );
@@ -65,7 +74,7 @@ export const leaveApi = {
 export const authApi = {
   login: (data: any) => api.post('/auth/login', data),
   register: (data: any) => api.post('/auth/register', data),
-  getCurrentUser: () => api.get('/auth/me'),
+  getCurrentUser: () => api.get('/user'),
 };
 
 export default api; 
