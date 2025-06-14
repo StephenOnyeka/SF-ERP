@@ -65,7 +65,7 @@ export default function AuthPage() {
   useEffect(() => {
     if (user) {
       console.log("User already logged in, redirecting to /");
-      setLocation("/");
+      setLocation("/dashboard");
     }
   }, [user, setLocation]);
 

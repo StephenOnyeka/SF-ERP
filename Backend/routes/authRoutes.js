@@ -47,21 +47,19 @@ router.post('/register', async (req, res) => {
       companyId = `SF-${lastId.toString().padStart(3, "0")}`;
     }
 
+    const validatedData = {
+      ...registerSchema.parse(req.body),
+      companyId, 
+      username: req.body.username
+    };
 
-    // const validatedData = registerSchema.parse(req.body) + companyId ;
-
-            const validatedData = {
-          ...registerSchema.parse(req.body),
-          companyId, 
-          username: req.body.username
-        };
-    console.log(req.body);
     // Check if user already exists
     const existingUser = await User.findOne({ email: validatedData.email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    // Create user without hashing password
     const user = new User(validatedData);
     await user.save();
 

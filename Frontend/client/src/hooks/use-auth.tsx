@@ -4,7 +4,11 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema";
+import {
+  insertUserSchema,
+  User as SelectUser,
+  InsertUser,
+} from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -14,7 +18,11 @@ type AuthContextType = {
   error: Error | null;
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
+  registerMutation: UseMutationResult<
+    { userData: SelectUser; credentials: InsertUser },
+    Error,
+    InsertUser
+  >;
 };
 
 type LoginData = Pick<InsertUser, "username" | "password">;
@@ -26,12 +34,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     data: user,
     error,
     isLoading,
-    refetch
+    refetch,
   } = useQuery<SelectUser | undefined, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
   });
-  
+
   // For debugging
   useEffect(() => {
     console.log("Auth state:", { user, isLoading, error });
@@ -44,15 +52,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res = await apiRequest("POST", "/api/login", credentials);
         const userData = await res.json();
         console.log("Login success, received user data:", userData);
+        // Store token and user data
+        if (userData.token) {
+          localStorage.setItem("token", userData.token);
+        }
         return userData;
       } catch (err) {
         console.error("Login error:", err);
         throw err;
       }
     },
-    onSuccess: (user: SelectUser) => {
+    onSuccess: (userData: SelectUser) => {
       console.log("Login mutation success, setting user data");
-      queryClient.setQueryData(["/api/user"], user);
+      queryClient.setQueryData(["/api/user"], userData);
       refetch(); // Refetch user data to ensure consistency
     },
     onError: (error: Error) => {
@@ -72,15 +84,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const res = await apiRequest("POST", "/api/register", credentials);
         const userData = await res.json();
         console.log("Registration success, received user data:", userData);
-        return userData;
+        // Store credentials temporarily for auto-login
+        return { userData, credentials };
       } catch (err) {
         console.error("Registration error:", err);
         throw err;
       }
     },
-    onSuccess: (user: SelectUser) => {
+    onSuccess: ({ userData, credentials }) => {
       console.log("Registration mutation success, setting user data");
-      queryClient.setQueryData(["/api/user"], user);
+      queryClient.setQueryData(["/api/user"], userData);
+      // Automatically trigger login after successful registration
+      loginMutation.mutate({
+        username: credentials.username,
+        password: credentials.password,
+      });
       refetch(); // Refetch user data to ensure consistency
     },
     onError: (error: Error) => {
