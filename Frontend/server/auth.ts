@@ -1,17 +1,20 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import { Express } from "express";
-import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import jwt from "jsonwebtoken";
 
 declare global {
   namespace Express {
     interface User extends SelectUser {}
   }
 }
+
+const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key";
+const JWT_EXPIRES_IN = "24h";
 
 const scryptAsync = promisify(scrypt);
 
@@ -40,49 +43,31 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
+function generateToken(user: SelectUser) {
+  const { password, ...userWithoutPassword } = user;
+  return jwt.sign(userWithoutPassword, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
+}
+
 export function setupAuth(app: Express) {
-  const sessionSecret = process.env.SESSION_SECRET || "this-is-a-secret-key-for-session";
-  
-  const sessionSettings: session.SessionOptions = {
-    secret: sessionSecret,
-    resave: false,
-    saveUninitialized: false,
-    store: storage.sessionStore,
-    cookie: { 
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 24 // 1 day
+  // JWT Authentication middleware
+  const authenticateJWT = (req: any, res: any, next: any) => {
+    const authHeader = req.headers.authorization;
+    
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      
+      jwt.verify(token, JWT_SECRET, (err: any, user: any) => {
+        if (err) {
+          return res.sendStatus(401);
+        }
+        
+        req.user = user;
+        next();
+      });
+    } else {
+      res.sendStatus(401);
     }
   };
-
-  app.set("trust proxy", 1);
-  app.use(session(sessionSettings));
-  app.use(passport.initialize());
-  app.use(passport.session());
-
-  passport.use(
-    new LocalStrategy(async (username, password, done) => {
-      try {
-        const user = await storage.getUserByUsername(username);
-        if (!user || !(await comparePasswords(password, user.password))) {
-          return done(null, false);
-        } else {
-          return done(null, user);
-        }
-      } catch (error) {
-        return done(error);
-      }
-    }),
-  );
-
-  passport.serializeUser((user, done) => done(null, user.id));
-  passport.deserializeUser(async (id: number, done) => {
-    try {
-      const user = await storage.getUser(id);
-      done(null, user);
-    } catch (error) {
-      done(error);
-    }
-  });
 
   app.post("/api/register", async (req, res, next) => {
     try {
@@ -102,58 +87,50 @@ export function setupAuth(app: Express) {
       
       // Remove password from response
       const { password, ...userWithoutPassword } = user;
-
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.status(201).json(userWithoutPassword);
+      
+      // Generate JWT token
+      const token = generateToken(user);
+      
+      res.status(201).json({
+        user: userWithoutPassword,
+        token
       });
     } catch (error) {
       next(error);
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
-    console.log("Login attempt:", req.body.username);
-    
-    passport.authenticate("local", (err, user, info) => {
-      if (err) {
-        console.error("Login error:", err);
-        return next(err);
-      }
+  app.post("/api/login", async (req, res, next) => {
+    try {
+      const user = await storage.getUserByUsername(req.body.username);
       
-      if (!user) {
-        console.log("Login failed: Invalid credentials for", req.body.username);
+      if (!user || !(await comparePasswords(req.body.password, user.password))) {
         return res.status(401).json({ message: "Invalid username or password" });
       }
       
-      console.log("Login successful for user:", user.username);
+      // Remove password from response
+      const { password, ...userWithoutPassword } = user;
       
-      req.login(user, (err) => {
-        if (err) {
-          console.error("Session creation error:", err);
-          return next(err);
-        }
-        
-        // Remove password from response
-        const { password, ...userWithoutPassword } = user;
-        console.log("Login complete, sending user data");
-        res.status(200).json(userWithoutPassword);
+      // Generate JWT token
+      const token = generateToken(user);
+      
+      res.status(200).json({
+        user: userWithoutPassword,
+        token
       });
-    })(req, res, next);
+    } catch (error) {
+      next(error);
+    }
   });
 
-  app.post("/api/logout", (req, res, next) => {
-    req.logout((err) => {
-      if (err) return next(err);
-      res.sendStatus(200);
-    });
+  app.post("/api/logout", (req, res) => {
+    // Since we're using JWT, we don't need to do anything on the server
+    // The client will remove the token
+    res.sendStatus(200);
   });
 
-  app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    
-    // Remove password from response
-    const { password, ...userWithoutPassword } = req.user as SelectUser;
-    res.json(userWithoutPassword);
+  app.get("/api/user", authenticateJWT, (req, res) => {
+    // User is already attached to req by authenticateJWT middleware
+    res.json(req.user);
   });
 }

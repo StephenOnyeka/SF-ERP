@@ -28,6 +28,7 @@ type AuthContextType = {
 type LoginData = Pick<InsertUser, "username" | "password">;
 
 export const AuthContext = createContext<AuthContextType | null>(null);
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const {
@@ -38,6 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   } = useQuery<SelectUser | undefined, Error>({
     queryKey: ["/api/user"],
     queryFn: getQueryFn({ on401: "returnNull" }),
+    retry: false,
   });
 
   // For debugging
@@ -50,9 +52,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Login attempt with:", credentials.username);
       try {
         const res = await apiRequest("POST", "/api/login", credentials);
-        const userData = await res.json();
-        console.log("Login success, received user data:", userData);
-        return userData;
+        const data = await res.json();
+        console.log("Login success, received data:", data);
+
+        // Store the token
+        if (data.token) {
+          localStorage.setItem("token", data.token);
+        } else {
+          throw new Error("No token received from server");
+        }
+
+        return data.user;
       } catch (err) {
         console.error("Login error:", err);
         throw err;
@@ -65,6 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onError: (error: Error) => {
       console.error("Login mutation error:", error);
+      // Clear any existing token on error
+      localStorage.removeItem("token");
       toast({
         title: "Login failed",
         description: error.message,
@@ -78,27 +90,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("Register attempt with:", credentials.username);
       try {
         const res = await apiRequest("POST", "/api/register", credentials);
-        const userData = await res.json();
-        console.log("Registration success, received user data:", userData);
-        // Store credentials temporarily for auto-login
-        return { userData, credentials };
+        const data = await res.json();
+        console.log("Registration success, received data:", data);
+
+        // Store the token
+        if (data.token) {
+          localStorage.setItem("token", data.token);
+        } else {
+          throw new Error("No token received from server");
+        }
+
+        return { userData: data.user, credentials };
       } catch (err) {
         console.error("Registration error:", err);
         throw err;
       }
     },
-    onSuccess: ({ userData, credentials }) => {
+    onSuccess: ({ userData }) => {
       console.log("Registration mutation success, setting user data");
       queryClient.setQueryData(["/api/user"], userData);
-      // Automatically trigger login after successful registration
-      loginMutation.mutate({
-        username: credentials.username,
-        password: credentials.password,
-      });
       refetch(); // Refetch user data to ensure consistency
     },
     onError: (error: Error) => {
       console.error("Registration mutation error:", error);
+      localStorage.removeItem("token");
       toast({
         title: "Registration failed",
         description: error.message,
@@ -120,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       console.log("Logout mutation success, clearing user data");
+      localStorage.removeItem("token");
       queryClient.setQueryData(["/api/user"], null);
       refetch(); // Refetch to ensure user state is cleared
     },
