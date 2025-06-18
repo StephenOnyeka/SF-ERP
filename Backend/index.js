@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(
   cors({
-    origin: "http://localhost:5000", // Frontend URL
+    origin: ["http://localhost:5000", "http://localhost:3000"], // Allow both dev frontend ports
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "Accept"],
@@ -137,7 +137,7 @@ app.post("/api/register", async (req, res) => {
     const token = jwt.sign(
       { userId: newUser._id, username: newUser.username },
       process.env.JWT_SECRET || "secret",
-      { expiresIn: "1h" }
+      { expiresIn: "8h" }
     );
 
     res.status(201).json({
@@ -172,7 +172,7 @@ app.post("/api/login", async (req, res) => {
     const token = jwt.sign(
       { userId: user._id, username: user.username },
       process.env.JWT_SECRET || "secret",
-      { expiresIn: "1h" }
+      { expiresIn: "8h" }
     );
     const userObj = user.toObject();
     delete userObj.password;
@@ -185,6 +185,7 @@ app.post("/api/login", async (req, res) => {
 // Get current user info from JWT
 app.get("/api/user", async (req, res) => {
   const authHeader = req.headers.authorization;
+  console.log("Authorization header received:", authHeader); // Debug log
   if (!authHeader) return res.status(401).json({ message: "No token" });
   const token = authHeader.split(" ")[1];
   try {
@@ -193,6 +194,7 @@ app.get("/api/user", async (req, res) => {
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json(user);
   } catch (err) {
+    console.error("JWT error:", err); // Debug log
     res.status(401).json({ message: "Invalid token" });
   }
 });
