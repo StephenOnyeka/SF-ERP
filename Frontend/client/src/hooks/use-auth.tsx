@@ -4,11 +4,7 @@ import {
   useMutation,
   UseMutationResult,
 } from "@tanstack/react-query";
-import {
-  insertUserSchema,
-  User as SelectUser,
-  InsertUser,
-} from "@shared/schema";
+import { User as SelectUser, LoginData } from "@shared/schema";
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,13 +15,11 @@ type AuthContextType = {
   loginMutation: UseMutationResult<SelectUser, Error, LoginData>;
   logoutMutation: UseMutationResult<void, Error, void>;
   registerMutation: UseMutationResult<
-    { userData: SelectUser; credentials: InsertUser },
+    { userData: SelectUser; credentials: LoginData },
     Error,
-    InsertUser
+    LoginData
   >;
 };
-
-type LoginData = Pick<InsertUser, "username" | "password">;
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -86,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: InsertUser) => {
+    mutationFn: async (credentials: LoginData) => {
       console.log("Register attempt with:", credentials.username);
       try {
         const res = await apiRequest("POST", "/api/register", credentials);
@@ -126,7 +120,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     mutationFn: async () => {
       console.log("Logout attempt");
       try {
-        await apiRequest("POST", "/api/logout");
+        // Use the updated authService.logout for proper cleanup
+        await import("../services/api").then((m) => m.authService.logout());
         console.log("Logout success");
       } catch (err) {
         console.error("Logout error:", err);
@@ -135,9 +130,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     onSuccess: () => {
       console.log("Logout mutation success, clearing user data");
-      localStorage.removeItem("token");
       queryClient.setQueryData(["/api/user"], null);
-      refetch(); // Refetch to ensure user state is cleared
+      // Optionally refetch to ensure user state is cleared
+      refetch();
+      // Redirect to login/auth page
+      window.location.href = "/auth";
     },
     onError: (error: Error) => {
       console.error("Logout mutation error:", error);

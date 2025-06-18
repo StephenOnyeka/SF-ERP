@@ -30,10 +30,14 @@ const employeeRoutes = require("./routes/employeeRoutes");
 console.log("Connecting to MongoDB...");
 
 mongoose
-  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/sforger-erp", {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(
+    process.env.MONGODB_URI ||
+      "mongodb+srv://ejeanobionyeka:AY4dLjYbAj6cxFma@cluster0.wryzuiq.mongodb.net/sforger-erp",
+    {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    }
+  )
   .then(() => {
     console.log("Connected to MongoDB");
   })
@@ -118,7 +122,8 @@ app.post("/api/register", async (req, res) => {
     const newUser = new User({
       username,
       password: hashedPassword,
-      fullName: `${firstName} ${lastName}`,
+      firstName,
+      lastName,
       email,
       role: assignedRole,
       companyId,

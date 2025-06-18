@@ -87,7 +87,7 @@ export function setupAuth(app: Express) {
       
       // Remove password from response
       const { password, ...userWithoutPassword } = user;
-      
+
       // Generate JWT token
       const token = generateToken(user);
       
@@ -126,7 +126,7 @@ export function setupAuth(app: Express) {
   app.post("/api/logout", (req, res) => {
     // Since we're using JWT, we don't need to do anything on the server
     // The client will remove the token
-    res.sendStatus(200);
+      res.sendStatus(200);
   });
 
   app.get("/api/user", authenticateJWT, (req, res) => {

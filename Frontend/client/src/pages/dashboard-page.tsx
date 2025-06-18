@@ -2,7 +2,13 @@ import { useEffect, useState } from "react";
 import DashboardLayout from "@/layouts/dashboard-layout";
 import { useAuth } from "@/hooks/use-auth";
 import { format } from "date-fns";
-import { Building2, Clock, CalendarDays, FileText, Settings } from "lucide-react";
+import {
+  Building2,
+  Clock,
+  CalendarDays,
+  FileText,
+  Settings,
+} from "lucide-react";
 
 import AttendanceStatus from "@/components/attendance-status";
 import LeaveBalanceCard from "@/components/leave-balance-card";
@@ -13,7 +19,7 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [greeting, setGreeting] = useState("Good morning");
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
-  
+
   // Set greeting based on time of day
   useEffect(() => {
     const hour = new Date().getHours();
@@ -24,12 +30,12 @@ export default function DashboardPage() {
     } else {
       setGreeting("Good evening");
     }
-    
+
     // Update date and time every minute
     const interval = setInterval(() => {
       setCurrentDateTime(new Date());
     }, 60000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -40,9 +46,11 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-800">
-                Welcome, {user?.firstName}!
+                Welcome, {user?.firstName || user?.username || "User"}!
               </h2>
-              <p className="text-gray-600 mt-1">{greeting}! Have a productive day!</p>
+              <p className="text-gray-600 mt-1">
+                {greeting}! Have a productive day!
+              </p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-500">Today is</p>

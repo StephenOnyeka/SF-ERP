@@ -27,39 +27,38 @@ export default function UserProfile() {
       console.error("Logout failed:", error);
     }
   };
-  
+
   const navigateToProfile = () => {
     setLocation("/profile");
   };
-  
+
   if (!user) return null;
-  
+
   // Generate initials for avatar
   const getInitials = () => {
     const firstName = user.firstName || "";
     const lastName = user.lastName || "";
     return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
   };
-  
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="pl-0 w-full flex items-center space-x-3 justify-start">
+        <Button
+          variant="ghost"
+          className="pl-0 w-full flex items-center space-x-3 justify-start"
+        >
           <Avatar className="h-9 w-9 bg-primary-100 text-primary-700">
             <AvatarFallback>{getInitials()}</AvatarFallback>
           </Avatar>
-          <div className="flex flex-col items-start">
-            <p className="text-sm font-medium text-gray-800 truncate">
-              {user.firstName} {user.lastName}
-            </p>
-            <p className="text-xs text-gray-500 truncate capitalize">
-              {user.role}
-              {user.department ? ` - ${user.department}` : ""}
-            </p>
-          </div>
+          <p className="text-sm font-medium text-gray-800 truncate">
+            {user.firstName && user.lastName
+              ? `${user.firstName} ${user.lastName}`
+              : "User"}
+          </p>
         </Button>
       </DropdownMenuTrigger>
-      
+
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuItem onClick={navigateToProfile}>
           <User className="mr-2 h-4 w-4" />

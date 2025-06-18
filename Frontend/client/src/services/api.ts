@@ -47,9 +47,20 @@ export const authService = {
     return response.data;
   },
 
-  logout: () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  logout: async () => {
+    try {
+      // Call server to invalidate the session
+      await apiInstance.post('/api/logout');
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Clear all auth data using the storage utility
+      storage.remove('token');
+      storage.remove('user');
+      // Also clear localStorage for backward compatibility
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+    }
   },
 
   getCurrentUser: () => {

@@ -43,22 +43,22 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  Pagination, 
-  PaginationContent, 
-  PaginationItem, 
-  PaginationLink, 
-  PaginationNext, 
-  PaginationPrevious
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
 } from "@/components/ui/pagination";
-import { 
+import {
   Search,
-  Trash, 
-  MoreHorizontal, 
-  UserCircle, 
-  UserCog, 
+  Trash,
+  MoreHorizontal,
+  UserCircle,
+  UserCog,
   ShieldAlert,
-  AlertTriangle
+  AlertTriangle,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { adminApi } from "@/lib/api";
@@ -66,7 +66,8 @@ import { toast } from "sonner";
 
 interface User {
   _id: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: string;
   isActive: boolean;
@@ -82,11 +83,11 @@ export default function UsersTable() {
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [newRole, setNewRole] = useState<string>("");
-  
+
   const { toast: useToastToast } = useToast();
   const { user: currentUser } = useAuth();
   const itemsPerPage = 8;
-  
+
   const fetchUsers = async () => {
     try {
       const response = await adminApi.getUsers();
@@ -129,79 +130,104 @@ export default function UsersTable() {
   const filteredUsers = users
     ? users.filter(
         (user) =>
-          user.fullName.toLowerCase().includes(search.toLowerCase()) ||
+          `${user.firstName} ${user.lastName}`
+            .toLowerCase()
+            .includes(search.toLowerCase()) ||
           user.email.toLowerCase().includes(search.toLowerCase())
       )
     : [];
-  
+
   // Pagination
   const totalItems = filteredUsers.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  
+
   const paginatedUsers = filteredUsers.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-  
+
   // Role badge
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "admin":
-        return <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1"><ShieldAlert className="h-3 w-3" />Admin</Badge>;
+        return (
+          <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
+            <ShieldAlert className="h-3 w-3" />
+            Admin
+          </Badge>
+        );
       case "hr":
-        return <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1"><UserCog className="h-3 w-3" />HR</Badge>;
+        return (
+          <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1">
+            <UserCog className="h-3 w-3" />
+            HR
+          </Badge>
+        );
       case "employee":
-        return <Badge className="bg-green-100 text-green-800 flex items-center gap-1"><UserCircle className="h-3 w-3" />Employee</Badge>;
+        return (
+          <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
+            <UserCircle className="h-3 w-3" />
+            Employee
+          </Badge>
+        );
       default:
         return <Badge>{role}</Badge>;
     }
   };
-  
+
   // Handlers
   const handleDeleteUser = (user: User) => {
     setDeleteUserId(user._id);
     setIsDeleteDialogOpen(true);
   };
-  
+
   const handleChangeRole = (user: User) => {
     setSelectedUser(user);
     setNewRole(user.role);
     setIsRoleDialogOpen(true);
   };
-  
+
   const confirmDeleteUser = () => {
     if (deleteUserId) {
-      handleDeleteUser({ _id: deleteUserId, fullName: "", email: "", role: "", isActive: true });
+      handleDeleteUser({
+        _id: deleteUserId,
+        firstName: "",
+        lastName: "",
+        email: "",
+        role: "",
+        isActive: true,
+      });
     }
   };
-  
+
   const confirmChangeRole = () => {
     if (selectedUser && newRole) {
       handleRoleUpdate(selectedUser._id, newRole);
     }
   };
-  
+
   // Check permissions
   const canDeleteUser = (targetUser: User) => {
     if (!currentUser) return false;
-    
+
     // Prevent deleting your own account
     if (currentUser._id === targetUser._id) return false;
-    
+
     // Admin can delete anyone
-    if (currentUser.role === 'admin') return true;
-    
+    if (currentUser.role === "admin") return true;
+
     // HR can only delete employees
-    if (currentUser.role === 'hr' && targetUser.role === 'employee') return true;
-    
+    if (currentUser.role === "hr" && targetUser.role === "employee")
+      return true;
+
     return false;
   };
-  
+
   const canChangeRole = () => {
     // Only admin can change roles
-    return currentUser?.role === 'admin';
+    return currentUser?.role === "admin";
   };
-  
+
   if (loading) {
     return (
       <Card>
@@ -225,7 +251,7 @@ export default function UsersTable() {
       </Card>
     );
   }
-  
+
   return (
     <>
       <Card>
@@ -250,7 +276,7 @@ export default function UsersTable() {
               />
             </div>
           </div>
-          
+
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -267,8 +293,9 @@ export default function UsersTable() {
                   paginatedUsers.map((user) => (
                     <TableRow key={user._id}>
                       <TableCell className="font-medium">
-                        <div>{user.fullName}</div>
-                        <div className="text-xs text-gray-500">{user.email}</div>
+                        <div className="flex items-center gap-2">
+                          <div>{`${user.firstName} ${user.lastName}`}</div>
+                        </div>
                       </TableCell>
                       <TableCell>{user.email}</TableCell>
                       <TableCell>{getRoleBadge(user.role)}</TableCell>
@@ -286,20 +313,26 @@ export default function UsersTable() {
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" title="User Actions">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              title="User Actions"
+                            >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             {canChangeRole() && (
-                              <DropdownMenuItem onClick={() => handleChangeRole(user)}>
+                              <DropdownMenuItem
+                                onClick={() => handleChangeRole(user)}
+                              >
                                 <UserCog className="h-4 w-4 mr-2" />
                                 Change Role
                               </DropdownMenuItem>
                             )}
-                            
+
                             {canDeleteUser(user) && (
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 onClick={() => handleDeleteUser(user)}
                                 className="text-destructive"
                               >
@@ -314,7 +347,10 @@ export default function UsersTable() {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-6 text-gray-500">
+                    <TableCell
+                      colSpan={6}
+                      className="text-center py-6 text-gray-500"
+                    >
                       No users found
                       {search && " matching search criteria"}
                     </TableCell>
@@ -323,38 +359,42 @@ export default function UsersTable() {
               </TableBody>
             </Table>
           </div>
-          
+
           {totalPages > 1 && (
             <div className="flex justify-end mt-4">
               <Pagination>
                 <PaginationContent>
                   <PaginationItem>
-                    <PaginationPrevious 
-                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    <PaginationPrevious
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                      }
                       isActive={currentPage > 1}
                     />
                   </PaginationItem>
-                  
-                  {Array.from({ length: Math.min(totalPages, 3) }).map((_, index) => {
-                    const pageNumber = index + 1;
-                    return (
-                      <PaginationItem key={pageNumber}>
-                        <PaginationLink
-                          isActive={pageNumber === currentPage}
-                          onClick={() => setCurrentPage(pageNumber)}
-                        >
-                          {pageNumber}
-                        </PaginationLink>
-                      </PaginationItem>
-                    );
-                  })}
-                  
+
+                  {Array.from({ length: Math.min(totalPages, 3) }).map(
+                    (_, index) => {
+                      const pageNumber = index + 1;
+                      return (
+                        <PaginationItem key={pageNumber}>
+                          <PaginationLink
+                            isActive={pageNumber === currentPage}
+                            onClick={() => setCurrentPage(pageNumber)}
+                          >
+                            {pageNumber}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    }
+                  )}
+
                   {totalPages > 3 && (
                     <PaginationItem>
                       <span className="px-4 py-2">...</span>
                     </PaginationItem>
                   )}
-                  
+
                   {totalPages > 3 && (
                     <PaginationItem>
                       <PaginationLink
@@ -365,10 +405,12 @@ export default function UsersTable() {
                       </PaginationLink>
                     </PaginationItem>
                   )}
-                  
+
                   <PaginationItem>
-                    <PaginationNext 
-                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    <PaginationNext
+                      onClick={() =>
+                        setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                      }
                       isActive={currentPage < totalPages}
                     />
                   </PaginationItem>
@@ -378,22 +420,21 @@ export default function UsersTable() {
           )}
         </CardContent>
       </Card>
-      
+
       {/* Role Change Dialog */}
       <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Change User Role</DialogTitle>
             <DialogDescription>
-              Change the role for {selectedUser?.fullName}. This will affect the user's permissions in the system.
+              Change the role for{" "}
+              {`${selectedUser?.firstName} ${selectedUser?.lastName}`}. This
+              will affect the user's permissions in the system.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4">
-            <Select
-              value={newRole}
-              onValueChange={setNewRole}
-            >
+            <Select value={newRole} onValueChange={setNewRole}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
@@ -404,39 +445,43 @@ export default function UsersTable() {
               </SelectContent>
             </Select>
           </div>
-          
+
           <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => setIsRoleDialogOpen(false)}
-            >
+            <Button variant="ghost" onClick={() => setIsRoleDialogOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={confirmChangeRole}
-              disabled={!newRole || newRole === selectedUser?.role || handleRoleUpdate.isPending}
+              disabled={
+                !newRole ||
+                newRole === selectedUser?.role ||
+                handleRoleUpdate.isPending
+              }
             >
               {handleRoleUpdate.isPending ? "Updating..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      
+
       {/* Delete User Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete User</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete this user? This action cannot be undone.
+              Are you sure you want to delete this user? This action cannot be
+              undone.
             </DialogDescription>
           </DialogHeader>
-          
+
           <div className="py-4 flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-destructive" />
-            <span className="text-destructive">This will permanently remove the user from the system.</span>
+            <span className="text-destructive">
+              This will permanently remove the user from the system.
+            </span>
           </div>
-          
+
           <DialogFooter>
             <Button
               variant="ghost"

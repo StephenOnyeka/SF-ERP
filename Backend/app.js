@@ -49,9 +49,32 @@ app.use(passport.session());
 
 // Connect to MongoDB
 mongoose
-  .connect(process.env.MONGODB_URI, {})
-  .then(() => console.log("Connected to MongoDB"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/sferp", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+    socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+  })
+  .then(() => {
+    console.log("Connected to MongoDB");
+    console.log(
+      "MongoDB URI:",
+      process.env.MONGODB_URI || "mongodb://localhost:27017/sferp"
+    );
+  })
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
+    process.exit(1); // Exit if cannot connect to database
+  });
+
+// Handle MongoDB connection events
+mongoose.connection.on("error", (err) => {
+  console.error("MongoDB connection error:", err);
+});
+
+mongoose.connection.on("disconnected", () => {
+  console.log("MongoDB disconnected");
+});
 
 // Routes
 app.use("/api/auth", require("./routes/authRoutes"));
