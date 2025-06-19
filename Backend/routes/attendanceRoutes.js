@@ -51,15 +51,21 @@ router.get("/my-attendance", auth, async (req, res) => {
     let query = { employee: employee._id };
 
     if (startDate && endDate) {
+      // Parse as UTC midnight
+      const start = new Date(startDate + "T00:00:00.000Z");
+      const end = new Date(endDate + "T23:59:59.999Z");
       query.date = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate),
+        $gte: start,
+        $lte: end,
       };
+      console.log("Attendance query:", query);
     }
 
     const attendance = await Attendance.find(query)
       .populate("verifiedBy", "fullName")
       .sort({ date: -1 });
+
+    console.log("Attendance results:", attendance.length, attendance.map(a => a.date));
 
     // Map fields for frontend compatibility
     const mapped = attendance.map((a) => ({

@@ -34,10 +34,12 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/use-auth";
 
 import { format, subDays, parseISO } from "date-fns";
 
 export default function AttendanceTable() {
+  const { user } = useAuth();
   // State for filters
   const [period, setPeriod] = useState("7");
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,13 +54,17 @@ export default function AttendanceTable() {
   const formattedEndDate = format(endDate, "yyyy-MM-dd");
 
   // Query attendance data with proper caching
+  const endpoint =
+    user?.role === "admin" || user?.role === "hr"
+      ? `/api/attendance?startDate=${formattedStartDate}&endDate=${formattedEndDate}`
+      : `/api/attendance/my-attendance?startDate=${formattedStartDate}&endDate=${formattedEndDate}`;
   const { data: attendanceData, isLoading } = useQuery<any[]>({
-    queryKey: ["attendance", formattedStartDate, formattedEndDate],
+    queryKey: [endpoint],
     queryFn: async () => {
-      const response = await fetch(
-        `/api/attendance?startDate=${formattedStartDate}&endDate=${formattedEndDate}`
-      );
+      const response = await fetch(endpoint);
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Attendance fetch failed:", response.status, errorText);
         throw new Error("Failed to fetch attendance data");
       }
       return response.json();
@@ -66,6 +72,10 @@ export default function AttendanceTable() {
     staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
     cacheTime: 30 * 60 * 1000, // Cache persists for 30 minutes
   });
+
+  // Debug: Log attendance data and endpoint
+  console.log("AttendanceTable endpoint:", endpoint);
+  console.log("AttendanceTable data:", attendanceData);
 
   // Reset to first page when period changes
   useEffect(() => {
@@ -238,6 +248,12 @@ export default function AttendanceTable() {
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
+          </div>
+        ) : !attendanceData ? (
+          <div className="text-center text-gray-500 py-8">
+            No attendance data received from the server.
+            <br />
+            Please check your network or contact support.
           </div>
         ) : (
           <>
