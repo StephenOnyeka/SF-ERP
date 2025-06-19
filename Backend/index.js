@@ -22,9 +22,11 @@ app.use(express.json());
 // MongoDB User model
 const mongoose = require("mongoose");
 const User = require("./models/User");
+const Employee = require("./models/Employee");
 
 // Import routes
 const employeeRoutes = require("./routes/employeeRoutes");
+const attendanceRoutes = require("./routes/attendanceRoutes");
 
 // Connect to MongoDB
 console.log("Connecting to MongoDB...");
@@ -134,6 +136,33 @@ app.post("/api/register", async (req, res) => {
 
     await newUser.save();
 
+    // Automatically create Employee document if role is employee
+    let newEmployee = null;
+    if (assignedRole === "employee") {
+      // Set defaults if not provided
+      const empDepartment = department || "General";
+      const empPosition = position || "Staff";
+      const empSalary = 0; // Default salary, can be updated later
+      // Generate employeeId
+      const lastEmployeeDoc = await Employee.findOne().sort({ employeeId: -1 });
+      let newId = 1;
+      if (lastEmployeeDoc && lastEmployeeDoc.employeeId) {
+        const match = lastEmployeeDoc.employeeId.match(/EMP-(\d+)/);
+        if (match) {
+          newId = parseInt(match[1], 10) + 1;
+        }
+      }
+      const employeeId = `EMP-${newId.toString().padStart(6, "0")}`;
+      newEmployee = new Employee({
+        user: newUser._id,
+        employeeId,
+        department: empDepartment,
+        position: empPosition,
+        salary: empSalary,
+      });
+      await newEmployee.save();
+    }
+
     // Don't return password
     const userObj = newUser.toObject();
     delete userObj.password;
@@ -149,6 +178,7 @@ app.post("/api/register", async (req, res) => {
       message: "User registered successfully",
       token,
       user: userObj,
+      employee: newEmployee,
     });
   } catch (err) {
     console.error("Registration error:", err);
@@ -265,6 +295,9 @@ app.get("/api/users", async (req, res) => {
 
 // Use employee routes
 app.use("/api/employees", employeeRoutes);
+
+// Use attendance routes
+app.use("/api/attendance", attendanceRoutes);
 
 // Start server
 app.listen(PORT, () => {

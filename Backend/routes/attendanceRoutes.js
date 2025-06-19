@@ -25,7 +25,15 @@ router.get("/", auth, isHR, async (req, res) => {
       .populate("verifiedBy", "fullName")
       .sort({ date: -1 });
 
-    res.json(attendance);
+    // Map fields for frontend compatibility
+    const mapped = attendance.map((a) => ({
+      ...a.toObject(),
+      checkInTime: a.checkIn?.time,
+      checkOutTime: a.checkOut?.time,
+      id: a._id,
+    }));
+
+    res.json(mapped);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -53,7 +61,15 @@ router.get("/my-attendance", auth, async (req, res) => {
       .populate("verifiedBy", "fullName")
       .sort({ date: -1 });
 
-    res.json(attendance);
+    // Map fields for frontend compatibility
+    const mapped = attendance.map((a) => ({
+      ...a.toObject(),
+      checkInTime: a.checkIn?.time,
+      checkOutTime: a.checkOut?.time,
+      id: a._id,
+    }));
+
+    res.json(mapped);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
@@ -81,22 +97,26 @@ router.post("/check-in", auth, async (req, res) => {
       return res.status(400).json({ message: "Already checked in today" });
     }
 
-    const attendance = new Attendance({
+    const attendanceData = {
       employee: employee._id,
       date: today,
       checkIn: {
         time: new Date(),
-        location: {
-          type: "Point",
-          coordinates: [location.longitude, location.latitude],
-        },
       },
       status: "present",
-    });
+    };
+    if (location && location.longitude && location.latitude) {
+      attendanceData.checkIn.location = {
+        type: "Point",
+        coordinates: [location.longitude, location.latitude],
+      };
+    }
 
+    const attendance = new Attendance(attendanceData);
     await attendance.save();
     res.status(201).json(attendance);
   } catch (err) {
+    console.error("Check-in error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
   }
 });

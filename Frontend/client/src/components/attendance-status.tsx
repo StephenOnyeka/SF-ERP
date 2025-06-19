@@ -6,12 +6,14 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function AttendanceStatus() {
   const [currentTime, setCurrentTime] = useState<string>(
     format(new Date(), "h:mm a")
   );
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // Update time every minute
   useEffect(() => {
@@ -26,9 +28,12 @@ export default function AttendanceStatus() {
   const today = new Date().toISOString().split("T")[0];
 
   // Get attendance data for today
+  const endpoint = user?.role === "admin" || user?.role === "hr"
+    ? "/api/attendance"
+    : "/api/attendance/my-attendance";
   const { data: attendanceData, isLoading: isLoadingAttendance } =
     useQuery<any>({
-      queryKey: ["/api/attendance", today],
+      queryKey: [endpoint, today],
       refetchInterval: 60000, // Refetch every minute
     });
 
@@ -59,17 +64,19 @@ export default function AttendanceStatus() {
   // Check-in mutation
   const checkInMutation = useMutation({
     mutationFn: async () => {
+      let location = undefined;
       try {
-        const location = await getCurrentLocation();
-        const res = await apiRequest("POST", "/api/attendance/check-in", {
-          location,
-        });
-        return await res.json();
+        location = await getCurrentLocation();
       } catch (error) {
-        throw new Error(
-          "Failed to get location. Please enable location services."
-        );
+        // If geolocation fails, proceed without location
+        location = undefined;
       }
+      const res = await apiRequest(
+        "POST",
+        "/api/attendance/check-in",
+        location ? { location } : {}
+      );
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });

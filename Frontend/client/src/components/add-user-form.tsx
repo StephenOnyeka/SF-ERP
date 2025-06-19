@@ -34,12 +34,8 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
 const formSchema = z.object({
-  username: z
-    .string()
-    .min(3, { message: "Username must be at least 3 characters" }),
-  password: z
-    .string()
-    .min(6, { message: "Password must be at least 6 characters" }),
+  username: z.string().min(3, { message: "Username must be at least 3 characters" }),
+  password: z.string().min(6, { message: "Password must be at least 6 characters" }),
   firstName: z.string().min(1, { message: "First name is required" }),
   lastName: z.string().min(1, { message: "Last name is required" }),
   email: z.string().email({ message: "Invalid email address" }),
@@ -50,7 +46,7 @@ const formSchema = z.object({
 
 export default function AddUserForm() {
   const { toast } = useToast();
-
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -64,11 +60,11 @@ export default function AddUserForm() {
       position: "",
     },
   });
-
+  
   // Create user mutation
   const createUserMutation = useMutation({
     mutationFn: async (data: z.infer<typeof formSchema>) => {
-      const res = await apiRequest("POST", "/api/auth/register", data);
+      const res = await apiRequest("POST", "/api/register", data);
       return await res.json();
     },
     onSuccess: () => {
@@ -96,11 +92,11 @@ export default function AddUserForm() {
       });
     },
   });
-
+  
   const onSubmit = (data: z.infer<typeof formSchema>) => {
     createUserMutation.mutate(data);
   };
-
+  
   return (
     <Card>
       <CardHeader>
@@ -125,7 +121,7 @@ export default function AddUserForm() {
                 </FormItem>
               )}
             />
-
+            
             <FormField
               control={form.control}
               name="password"
@@ -139,7 +135,7 @@ export default function AddUserForm() {
                 </FormItem>
               )}
             />
-
+            
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -154,7 +150,7 @@ export default function AddUserForm() {
                   </FormItem>
                 )}
               />
-
+              
               <FormField
                 control={form.control}
                 name="lastName"
@@ -169,7 +165,7 @@ export default function AddUserForm() {
                 )}
               />
             </div>
-
+            
             <FormField
               control={form.control}
               name="email"
@@ -187,7 +183,7 @@ export default function AddUserForm() {
                 </FormItem>
               )}
             />
-
+            
             <FormField
               control={form.control}
               name="role"
@@ -210,7 +206,7 @@ export default function AddUserForm() {
                 </FormItem>
               )}
             />
-
+            
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -225,7 +221,7 @@ export default function AddUserForm() {
                   </FormItem>
                 )}
               />
-
+              
               <FormField
                 control={form.control}
                 name="position"
@@ -240,7 +236,7 @@ export default function AddUserForm() {
                 )}
               />
             </div>
-
+            
             <Button
               type="submit"
               className="w-full"

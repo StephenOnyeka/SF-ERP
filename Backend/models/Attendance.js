@@ -20,11 +20,10 @@ const attendanceSchema = new mongoose.Schema(
         type: {
           type: String,
           enum: ["Point"],
-          default: "Point",
         },
         coordinates: {
           type: [Number],
-          required: true,
+          required: false,
         },
       },
     },
@@ -36,10 +35,10 @@ const attendanceSchema = new mongoose.Schema(
         type: {
           type: String,
           enum: ["Point"],
-          default: "Point",
         },
         coordinates: {
           type: [Number],
+          required: false,
         },
       },
     },
