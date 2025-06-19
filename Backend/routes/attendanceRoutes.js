@@ -144,17 +144,19 @@ router.post("/check-out", auth, async (req, res) => {
         .json({ message: "No check-in record found for today" });
     }
 
-    if (attendance.checkOut) {
+    if (attendance.checkOut && attendance.checkOut.time) {
       return res.status(400).json({ message: "Already checked out today" });
     }
 
     attendance.checkOut = {
       time: new Date(),
-      location: {
+    };
+    if (location && location.longitude && location.latitude) {
+      attendance.checkOut.location = {
         type: "Point",
         coordinates: [location.longitude, location.latitude],
-      },
-    };
+      };
+    }
 
     await attendance.save();
     res.json(attendance);

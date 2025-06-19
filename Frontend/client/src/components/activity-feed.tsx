@@ -126,14 +126,13 @@ export default function ActivityFeed() {
 
   // Helper function to format time
   function formatTime(timeString: string) {
-    if (!timeString) return "";
-
-    const [hours, minutes] = timeString.split(":");
-    const hour = parseInt(hours);
-    const isPM = hour >= 12;
-    const displayHour = hour % 12 || 12;
-
-    return `${displayHour}:${minutes} ${isPM ? "PM" : "AM"}`;
+    if (!timeString) return '';
+    try {
+      const date = typeof timeString === 'string' ? parseISO(timeString) : timeString;
+      return format(date, "h:mm a");
+    } catch {
+      return timeString;
+    }
   }
 
   // Helper function to get month name

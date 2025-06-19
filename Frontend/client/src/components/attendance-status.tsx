@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -24,13 +24,14 @@ export default function AttendanceStatus() {
     return () => clearInterval(interval);
   }, []);
 
-  // Get today's date in YYYY-MM-DD format
-  const today = new Date().toISOString().split("T")[0];
+  // Get today's date in YYYY-MM-DD format (local)
+  const today = format(new Date(), "yyyy-MM-dd");
 
   // Get attendance data for today
-  const endpoint = user?.role === "admin" || user?.role === "hr"
-    ? "/api/attendance"
-    : "/api/attendance/my-attendance";
+  const endpoint =
+    user?.role === "admin" || user?.role === "hr"
+      ? "/api/attendance"
+      : "/api/attendance/my-attendance";
   const { data: attendanceData, isLoading: isLoadingAttendance } =
     useQuery<any>({
       queryKey: [endpoint, today],
@@ -97,17 +98,19 @@ export default function AttendanceStatus() {
   // Check-out mutation
   const checkOutMutation = useMutation({
     mutationFn: async () => {
+      let location = undefined;
       try {
-        const location = await getCurrentLocation();
-        const res = await apiRequest("POST", "/api/attendance/check-out", {
-          location,
-        });
-        return await res.json();
+        location = await getCurrentLocation();
       } catch (error) {
-        throw new Error(
-          "Failed to get location. Please enable location services."
-        );
+        // If geolocation fails, proceed without location
+        location = undefined;
       }
+      const res = await apiRequest(
+        "POST",
+        "/api/attendance/check-out",
+        location ? { location } : {}
+      );
+      return await res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
@@ -127,13 +130,13 @@ export default function AttendanceStatus() {
 
   // Check if user has already checked in or out today
   const hasTodaysAttendance = attendanceData?.some((record: any) => {
-    const recordDate = new Date(record.date).toISOString().split("T")[0];
+    const recordDate = format(new Date(record.date), "yyyy-MM-dd");
     return recordDate === today;
   });
 
   const todayAttendance = hasTodaysAttendance
     ? attendanceData.find((record: any) => {
-        const recordDate = new Date(record.date).toISOString().split("T")[0];
+        const recordDate = format(new Date(record.date), "yyyy-MM-dd");
         return recordDate === today;
       })
     : null;
