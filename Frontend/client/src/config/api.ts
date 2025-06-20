@@ -3,24 +3,24 @@ export const API_BASE_URL = 'http://localhost:3000';
 
 export const API_ENDPOINTS = {
   AUTH: {
-    LOGIN: `${API_BASE_URL}/api/login`,
-    REGISTER: `${API_BASE_URL}/api/register`,
-    LOGOUT: `${API_BASE_URL}/api/logout`,
-    ME: `${API_BASE_URL}/api/user`,
+    LOGIN: `/api/login`,
+    REGISTER: `/api/register`,
+    LOGOUT: `/api/logout`,
+    ME: `/api/user`,
   },
   USERS: {
-    LIST: `${API_BASE_URL}/api/users`,
-    DETAIL: (id: string) => `${API_BASE_URL}/api/users/${id}`,
+    LIST: `/api/users`,
+    DETAIL: (id: string) => `/api/users/${id}`,
   },
   ATTENDANCE: {
-    LIST: `${API_BASE_URL}/api/attendance`,
-    CLOCK_IN: `${API_BASE_URL}/api/attendance/clock-in`,
-    CLOCK_OUT: `${API_BASE_URL}/api/attendance/clock-out`,
+    LIST: `/api/attendance`,
+    CLOCK_IN: `/api/attendance/clock-in`,
+    CLOCK_OUT: `/api/attendance/clock-out`,
   },
   LEAVE: {
-    APPLICATIONS: `${API_BASE_URL}/api/leave-applications`,
-    QUOTAS: `${API_BASE_URL}/api/leave-quotas`,
+    APPLICATIONS: `/api/leave-applications`,
+    QUOTAS: `/api/leave-quotas`,
   },
-  HOLIDAYS: `${API_BASE_URL}/api/holidays`,
-  SALARY: `${API_BASE_URL}/api/salary`,
+  HOLIDAYS: `/api/holidays`,
+  SALARY: `/api/salary`,
 }; 
