@@ -123,7 +123,14 @@ router.post("/check-in", auth, async (req, res) => {
 
     const attendance = new Attendance(attendanceData);
     await attendance.save();
-    res.status(201).json(attendance);
+    // Map fields for frontend compatibility
+    const mapped = {
+      ...attendance.toObject(),
+      checkInTime: attendance.checkIn?.time,
+      checkOutTime: attendance.checkOut?.time,
+      id: attendance._id,
+    };
+    res.status(201).json(mapped);
   } catch (err) {
     console.error("Check-in error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
@@ -168,7 +175,14 @@ router.post("/check-out", auth, async (req, res) => {
     }
 
     await attendance.save();
-    res.json(attendance);
+    // Map fields for frontend compatibility
+    const mapped = {
+      ...attendance.toObject(),
+      checkInTime: attendance.checkIn?.time,
+      checkOutTime: attendance.checkOut?.time,
+      id: attendance._id,
+    };
+    res.json(mapped);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }

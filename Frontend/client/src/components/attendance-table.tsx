@@ -38,6 +38,16 @@ import { useAuth } from "@/hooks/use-auth";
 
 import { format, subDays, parseISO } from "date-fns";
 
+type AttendanceRecord = {
+  _id: string;
+  date: string;
+  checkIn?: { time: string };
+  checkOut?: { time: string };
+  status: string;
+  workHours?: string;
+  notes?: string;
+};
+
 export default function AttendanceTable() {
   const { user } = useAuth();
   // State for filters
@@ -47,7 +57,7 @@ export default function AttendanceTable() {
 
   // Calculate date range based on period
   const endDate = new Date();
-  const startDate = subDays(endDate, parseInt(period));
+  const startDate = subDays(endDate, parseInt(period) - 1);
 
   // Format dates for query key to prevent unnecessary re-renders
   const formattedStartDate = format(startDate, "yyyy-MM-dd");
@@ -62,7 +72,7 @@ export default function AttendanceTable() {
     data: attendanceData,
     isLoading,
     error: attendanceError,
-  } = useQuery<any[]>({
+  } = useQuery<AttendanceRecord[], Error>({
     queryKey: [endpoint],
     queryFn: async () => {
       const response = await fetch(endpoint);
@@ -81,7 +91,7 @@ export default function AttendanceTable() {
       }
     },
     staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
-    cacheTime: 30 * 60 * 1000, // Cache persists for 30 minutes
+    initialData: [],
   });
 
   // Debug: Log attendance data and endpoint
@@ -171,54 +181,59 @@ export default function AttendanceTable() {
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
+    // Show up to 3 page numbers: previous, current, next
+    let pages: number[] = [];
+    if (totalPages <= 3) {
+      pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    } else if (currentPage === 1) {
+      pages = [1, 2, 3];
+    } else if (currentPage === totalPages) {
+      pages = [totalPages - 2, totalPages - 1, totalPages];
+    } else {
+      pages = [currentPage - 1, currentPage, currentPage + 1];
+    }
+
     return (
       <Pagination>
         <PaginationContent>
           <PaginationItem>
             <PaginationPrevious
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              isActive={currentPage > 1}
+              aria-disabled={currentPage <= 1}
             />
           </PaginationItem>
-
-          {Array.from({ length: Math.min(totalPages, 3) }).map((_, index) => {
-            const pageNumber = index + 1;
-            return (
-              <PaginationItem key={pageNumber}>
-                <PaginationLink
-                  isActive={pageNumber === currentPage}
-                  onClick={() => setCurrentPage(pageNumber)}
-                >
-                  {pageNumber}
-                </PaginationLink>
-              </PaginationItem>
-            );
-          })}
-
-          {totalPages > 3 && currentPage < totalPages && (
+          {pages.map((pageNumber) => (
+            <PaginationItem key={pageNumber}>
+              <PaginationLink
+                aria-current={pageNumber === currentPage ? "page" : undefined}
+                onClick={() => setCurrentPage(pageNumber)}
+                className={pageNumber === currentPage ? "font-bold" : ""}
+              >
+                {pageNumber}
+              </PaginationLink>
+            </PaginationItem>
+          ))}
+          {pages[pages.length - 1] < totalPages && (
             <>
-              {currentPage < totalPages - 1 && (
-                <PaginationItem>
-                  <span className="px-4 py-2">...</span>
-                </PaginationItem>
-              )}
               <PaginationItem>
+                <span className="px-4 py-2">...</span>
+              </PaginationItem>
+              <PaginationItem key={totalPages}>
                 <PaginationLink
-                  isActive={totalPages === currentPage}
                   onClick={() => setCurrentPage(totalPages)}
+                  className={totalPages === currentPage ? "font-bold" : ""}
                 >
                   {totalPages}
                 </PaginationLink>
               </PaginationItem>
             </>
           )}
-
           <PaginationItem>
             <PaginationNext
               onClick={() =>
                 setCurrentPage((prev) => Math.min(prev + 1, totalPages))
               }
-              isActive={currentPage < totalPages}
+              aria-disabled={currentPage >= totalPages}
             />
           </PaginationItem>
         </PaginationContent>
@@ -291,7 +306,7 @@ export default function AttendanceTable() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedData.map((record) => (
+                  {paginatedData.map((record: AttendanceRecord) => (
                     <TableRow key={record._id}>
                       <TableCell>{formatDate(record.date)}</TableCell>
                       <TableCell>
