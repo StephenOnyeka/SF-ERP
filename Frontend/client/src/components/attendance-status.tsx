@@ -80,7 +80,16 @@ export default function AttendanceStatus() {
       return await res.json();
     },
     onSuccess: () => {
+      // Invalidate all attendance-related queries for both HR/admin and employees
       queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/attendance/my-attendance"],
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("/api/attendance"),
+      });
       toast({
         title: "Checked in successfully",
         description: `You clocked in at ${format(new Date(), "h:mm a")}`,
@@ -113,7 +122,16 @@ export default function AttendanceStatus() {
       return await res.json();
     },
     onSuccess: () => {
+      // Invalidate all attendance-related queries for both HR/admin and employees
       queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/attendance/my-attendance"],
+      });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          typeof query.queryKey[0] === "string" &&
+          query.queryKey[0].startsWith("/api/attendance"),
+      });
       toast({
         title: "Checked out successfully",
         description: `You clocked out at ${format(new Date(), "h:mm a")}`,
