@@ -58,7 +58,11 @@ export default function AttendanceTable() {
     user?.role === "admin" || user?.role === "hr"
       ? `/api/attendance?startDate=${formattedStartDate}&endDate=${formattedEndDate}`
       : `/api/attendance/my-attendance?startDate=${formattedStartDate}&endDate=${formattedEndDate}`;
-  const { data: attendanceData, isLoading } = useQuery<any[]>({
+  const {
+    data: attendanceData,
+    isLoading,
+    error: attendanceError,
+  } = useQuery<any[]>({
     queryKey: [endpoint],
     queryFn: async () => {
       const response = await fetch(endpoint);
@@ -72,9 +76,8 @@ export default function AttendanceTable() {
         console.log("AttendanceTable fetched JSON:", json);
         return json;
       } catch (err) {
-        const raw = await response.text();
-        console.error("Failed to parse JSON. Raw response:", raw, err);
-        return undefined;
+        console.error("Failed to parse JSON. Response object:", response, err);
+        throw new Error("Failed to parse attendance data as JSON.");
       }
     },
     staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
@@ -259,9 +262,19 @@ export default function AttendanceTable() {
           </div>
         ) : !attendanceData ? (
           <div className="text-center text-gray-500 py-8">
-            No attendance data received from the server.
-            <br />
-            Please check your network or contact support.
+            {attendanceError ? (
+              <>
+                Error loading attendance data.
+                <br />
+                {attendanceError.message}
+              </>
+            ) : (
+              <>
+                No attendance data received from the server.
+                <br />
+                Please check your network or contact support.
+              </>
+            )}
           </div>
         ) : (
           <>
