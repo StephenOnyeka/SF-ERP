@@ -67,7 +67,15 @@ export default function AttendanceTable() {
         console.error("Attendance fetch failed:", response.status, errorText);
         throw new Error("Failed to fetch attendance data");
       }
-      return response.json();
+      try {
+        const json = await response.json();
+        console.log("AttendanceTable fetched JSON:", json);
+        return json;
+      } catch (err) {
+        const raw = await response.text();
+        console.error("Failed to parse JSON. Raw response:", raw, err);
+        return undefined;
+      }
     },
     staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
     cacheTime: 30 * 60 * 1000, // Cache persists for 30 minutes

@@ -23,7 +23,8 @@ router.get("/", auth, isHR, async (req, res) => {
       .populate("employee", "employeeId user")
       .populate("employee.user", "fullName email")
       .populate("verifiedBy", "fullName")
-      .sort({ date: -1 });
+      .sort({ date: -1 })
+      .lean();
 
     // Map fields for frontend compatibility
     const mapped = attendance.map((a) => ({
@@ -63,7 +64,8 @@ router.get("/my-attendance", auth, async (req, res) => {
 
     const attendance = await Attendance.find(query)
       .populate("verifiedBy", "fullName")
-      .sort({ date: -1 });
+      .sort({ date: -1 })
+      .lean();
 
     console.log("Attendance results:", attendance.length, attendance.map(a => a.date));
 
@@ -75,6 +77,7 @@ router.get("/my-attendance", auth, async (req, res) => {
       id: a._id,
     }));
 
+    console.log("Mapped attendance to send:", Array.isArray(mapped), mapped);
     res.json(mapped);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
