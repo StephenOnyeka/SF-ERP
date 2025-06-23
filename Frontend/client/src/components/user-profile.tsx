@@ -1,5 +1,4 @@
-import { useAuth } from "@/hooks/use-auth";
-import { LogOut, User, Settings, Loader2 } from "lucide-react";
+import { LogOut, User, Settings } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,21 +10,20 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function UserProfile() {
-  const { user, logoutMutation } = useAuth();
   const [_, setLocation] = useLocation();
 
-  const handleLogout = async () => {
-    try {
-      await logoutMutation.mutateAsync();
-      toast({
-        title: "Logout successful",
-        description: "You have been logged out successfully.",
-      });
-    } catch (error) {
-      console.error("Logout failed:", error);
-    }
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    toast({
+      title: "Logged out",
+      description: "You have been successfully logged out.",
+    });
+    setLocation("/auth");
   };
 
   const navigateToProfile = () => {
@@ -72,19 +70,9 @@ export default function UserProfile() {
         <DropdownMenuItem
           className="text-destructive focus:text-destructive"
           onClick={handleLogout}
-          disabled={logoutMutation.isPending}
         >
-          {logoutMutation.isPending ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              <span>Logging out...</span>
-            </>
-          ) : (
-            <>
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>Log Out</span>
-            </>
-          )}
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Log Out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

@@ -1,83 +1,67 @@
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Clock, Calendar, Check, FileText } from "lucide-react";
+import { Clock, Calendar, FileText } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { useAuth } from "@/hooks/use-auth";
-
-type Activity = {
-  id: string;
-  type: "attendance" | "leave" | "salary" | "other";
-  title: string;
-  timestamp: string;
-  icon: React.ReactNode;
-  iconBg: string;
-  iconColor: string;
-};
+import { useAttendanceStore } from "@/stores/attendance-store";
+import { useSalaryStore } from "@/stores/salary-store";
+import { useLeaveStore } from "@/stores/leave-store";
+import { useUserScopedData } from "@/hooks/useUserScopedData";
 
 export default function ActivityFeed() {
-  const { user } = useAuth();
-  // Fetch attendance data
-  const endpoint =
+  const { user, attendance, leaves, quotas } = useUserScopedData() ?? {};
+  const { attendanceRecords } = useAttendanceStore();
+  const { salaryRecords } = useSalaryStore();
+  const { leaveApplications } = useLeaveStore();
+
+  const isLoading = !user;
+
+  const activities: {
+  id: string;
+  type: string;
+  title: string;
+  timestamp: Date | string;
+  icon: React.JSX.Element;
+  iconBg: string;
+  iconColor: string;
+}[] = [];
+
+  // Filter attendance based on user role
+  const userAttendance =
     user?.role === "admin" || user?.role === "hr"
-      ? "/api/attendance"
-      : "/api/attendance/my-attendance";
-  const { data: attendanceData, isLoading: isLoadingAttendance } = useQuery<
-    any[]
-  >({
-    queryKey: [endpoint],
+      ? attendanceRecords
+      : attendanceRecords.filter((a) => a.userId === user?.id);
+
+  userAttendance.slice(0, 3).forEach((attendance) => {
+    if (attendance.checkInTime) {
+      activities.push({
+        id: `attendance-in-${attendance.id}`,
+        type: "attendance",
+        title: `You checked in at ${formatTime(attendance.checkInTime)}`,
+        timestamp: attendance.date,
+        icon: <Clock className="h-4 w-4" />,
+        iconBg: "bg-primary-100",
+        iconColor: "text-primary-600",
+      });
+    }
+
+    if (attendance.checkOutTime) {
+      activities.push({
+        id: `attendance-out-${attendance.id}`,
+        type: "attendance",
+        title: `You checked out at ${formatTime(attendance.checkOutTime)}`,
+        timestamp: attendance.date,
+        icon: <Clock className="h-4 w-4" />,
+        iconBg: "bg-primary-100",
+        iconColor: "text-primary-600",
+      });
+    }
   });
 
-  // Fetch leave applications
-  const { data: leaveData, isLoading: isLoadingLeaves } = useQuery<any[]>({
-    queryKey: ["/api/leave-applications"],
-  });
-
-  // Fetch salary data
-  const { data: salaryData, isLoading: isLoadingSalaries } = useQuery<any[]>({
-    queryKey: ["/api/salary"],
-  });
-
-  const isLoading = isLoadingAttendance || isLoadingLeaves || isLoadingSalaries;
-
-  // Process activities from data
-  const activities: Activity[] = [];
-
-  // Add attendance activities
-  if (attendanceData) {
-    attendanceData.slice(0, 3).forEach((attendance) => {
-      if (attendance.checkInTime) {
-        activities.push({
-          id: `attendance-in-${attendance.id}`,
-          type: "attendance",
-          title: `You checked in at ${formatTime(attendance.checkInTime)}`,
-          timestamp: attendance.date,
-          icon: <Clock className="h-4 w-4" />,
-          iconBg: "bg-primary-100",
-          iconColor: "text-primary-600",
-        });
-      }
-
-      if (attendance.checkOutTime) {
-        activities.push({
-          id: `attendance-out-${attendance.id}`,
-          type: "attendance",
-          title: `You checked out at ${formatTime(attendance.checkOutTime)}`,
-          timestamp: attendance.date,
-          icon: <Clock className="h-4 w-4" />,
-          iconBg: "bg-primary-100",
-          iconColor: "text-primary-600",
-        });
-      }
-    });
-  }
-
-  // Add leave activities
-  if (leaveData) {
-    leaveData.slice(0, 3).forEach((leave) => {
-      const leaveStatus =
-        leave.status.charAt(0).toUpperCase() + leave.status.slice(1);
-
+  leaveApplications
+    .filter((l) => l.userId === user?.id)
+    .slice(0, 3)
+    .forEach((leave) => {
       activities.push({
         id: `leave-${leave.id}`,
         type: "leave",
@@ -100,49 +84,45 @@ export default function ActivityFeed() {
             : "text-yellow-600",
       });
     });
-  }
 
-  // Add salary activities
-  if (salaryData) {
-    salaryData.slice(0, 2).forEach((salary) => {
+  salaryRecords
+    .filter((s) => s.userId === user?.id)
+    .slice(0, 2)
+    .forEach((salary) => {
       activities.push({
         id: `salary-${salary.id}`,
         type: "salary",
         title: `Your ${getMonthName(
           salary.month
         )} salary statement is available`,
-        timestamp: new Date().toISOString(), // Use current date as timestamp
+        timestamp: new Date().toISOString(),
         icon: <FileText className="h-4 w-4" />,
         iconBg: "bg-blue-100",
         iconColor: "text-blue-600",
       });
     });
-  }
 
-  // Sort activities by timestamp (most recent first)
-  activities.sort((a, b) => {
-    return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-  });
+  activities.sort(
+    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+  );
 
-  // Helper function to format time
   function formatTime(timeString: string) {
-    if (!timeString) return '';
+    if (!timeString) return "";
     try {
-      const date = typeof timeString === 'string' ? parseISO(timeString) : timeString;
+      const date =
+        typeof timeString === "string" ? parseISO(timeString) : timeString;
       return format(date, "h:mm a");
     } catch {
       return timeString;
     }
   }
 
-  // Helper function to get month name
   function getMonthName(monthNumber: number) {
     const date = new Date();
     date.setMonth(monthNumber - 1);
     return date.toLocaleString("default", { month: "long" });
   }
 
-  // Helper function to format relative time
   function formatRelativeTime(timestamp: string) {
     try {
       const date = parseISO(timestamp);
@@ -151,50 +131,34 @@ export default function ActivityFeed() {
         (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
       );
 
-      if (diffInDays === 0) {
-        return "Today";
-      } else if (diffInDays === 1) {
-        return "Yesterday";
-      } else if (diffInDays < 7) {
-        return `${diffInDays} days ago`;
-      } else {
-        return format(date, "MMM d, yyyy");
-      }
-    } catch (error) {
+      if (diffInDays === 0) return "Today";
+      if (diffInDays === 1) return "Yesterday";
+      if (diffInDays < 7) return `${diffInDays} days ago`;
+      console.log("caught it in try",format(date, "MMM d, yyyy"))
+      return format(date, "MMM d, yyyy");
+    } catch {
+      console.log("caught it in catch",timestamp)
       return timestamp;
     }
   }
-
+  console.log(activities,"error activities caught")
   return (
     <Card>
       <CardHeader className="border-b px-6 py-3">
         <CardTitle className="text-base font-medium">Recent Activity</CardTitle>
       </CardHeader>
-
       <CardContent className="p-4">
         {isLoading ? (
           <div className="space-y-4">
-            <div className="flex items-start space-x-3">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <div className="flex-1 space-y-1">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/3" />
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-start space-x-3">
+                <Skeleton className="h-8 w-8 rounded-full" />
+                <div className="flex-1 space-y-1">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/3" />
+                </div>
               </div>
-            </div>
-            <div className="flex items-start space-x-3">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <div className="flex-1 space-y-1">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/3" />
-              </div>
-            </div>
-            <div className="flex items-start space-x-3">
-              <Skeleton className="h-8 w-8 rounded-full" />
-              <div className="flex-1 space-y-1">
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-3 w-1/3" />
-              </div>
-            </div>
+            ))}
           </div>
         ) : activities.length > 0 ? (
           <ul className="divide-y divide-gray-200">
@@ -208,7 +172,7 @@ export default function ActivityFeed() {
                 <div>
                   <p className="text-sm text-gray-800">{activity.title}</p>
                   <p className="text-xs text-gray-500">
-                    {formatRelativeTime(activity.timestamp)}
+                    {formatRelativeTime(typeof activity.timestamp === "string" ? activity.timestamp : activity.timestamp.toISOString())}
                   </p>
                 </div>
               </li>

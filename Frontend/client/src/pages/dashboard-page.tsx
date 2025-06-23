@@ -14,9 +14,10 @@ import AttendanceStatus from "@/components/attendance-status";
 import LeaveBalanceCard from "@/components/leave-balance-card";
 import ActivityFeed from "@/components/activity-feed";
 import QuickLinks from "@/components/quick-links";
+import { useUserScopedData } from "@/hooks/useUserScopedData";
 
 export default function DashboardPage() {
-  const { user } = useAuth();
+  const { user } = useUserScopedData()
   const [greeting, setGreeting] = useState("Good morning");
   const [currentDateTime, setCurrentDateTime] = useState(new Date());
 

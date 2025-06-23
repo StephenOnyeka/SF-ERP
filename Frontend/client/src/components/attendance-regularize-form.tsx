@@ -1,11 +1,10 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { format } from "date-fns";
+import { useAttendanceStore } from "@/stores/attendance-store";
+import { useAuth } from "@/hooks/use-auth";
 
 import {
   Card,
@@ -36,8 +35,11 @@ const formSchema = z.object({
 
 export default function AttendanceRegularizeForm() {
   const { toast } = useToast();
+  const { user } = useAuth();
   const today = format(new Date(), "yyyy-MM-dd");
-  
+  const checkIn = useAttendanceStore((state) => state.checkIn);
+  const checkOut = useAttendanceStore((state) => state.checkOut);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -47,37 +49,8 @@ export default function AttendanceRegularizeForm() {
       notes: "",
     },
   });
-  
-  // Regularize attendance mutation
-  const regularizeMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
-      const res = await apiRequest("POST", "/api/attendance/regularize", data);
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/attendance"] });
-      toast({
-        title: "Attendance regularized",
-        description: "Your request has been submitted successfully",
-      });
-      form.reset({
-        date: today,
-        checkInTime: "",
-        checkOutTime: "",
-        notes: "",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to regularize attendance",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-  
+
   const onSubmit = (data: z.infer<typeof formSchema>) => {
-    // Validate that at least one time is provided
     if (!data.checkInTime && !data.checkOutTime) {
       toast({
         title: "Validation error",
@@ -86,10 +59,46 @@ export default function AttendanceRegularizeForm() {
       });
       return;
     }
-    
-    regularizeMutation.mutate(data);
+
+    try {
+      const date = new Date(data.date);
+
+      if (data.checkInTime) {
+        const [h, m] = data.checkInTime.split(":");
+        const checkInDate = new Date(date);
+        checkInDate.setHours(parseInt(h), parseInt(m));
+
+        checkIn(user!.id!);
+      }
+
+      if (data.checkOutTime) {
+        const [h, m] = data.checkOutTime.split(":");
+        const checkOutDate = new Date(date);
+        checkOutDate.setHours(parseInt(h), parseInt(m));
+
+        checkOut(user!.id!);
+      }
+
+      toast({
+        title: "Attendance regularized",
+        description: "Your request has been submitted successfully",
+      });
+
+      form.reset({
+        date: today,
+        checkInTime: "",
+        checkOutTime: "",
+        notes: "",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to regularize attendance",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    }
   };
-  
+
   return (
     <Card>
       <CardHeader>
@@ -114,7 +123,7 @@ export default function AttendanceRegularizeForm() {
                 </FormItem>
               )}
             />
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -129,7 +138,7 @@ export default function AttendanceRegularizeForm() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="checkOutTime"
@@ -144,7 +153,7 @@ export default function AttendanceRegularizeForm() {
                 )}
               />
             </div>
-            
+
             <FormField
               control={form.control}
               name="notes"
@@ -162,14 +171,9 @@ export default function AttendanceRegularizeForm() {
                 </FormItem>
               )}
             />
-            
-            <Button
-              type="submit"
-              disabled={regularizeMutation.isPending}
-            >
-              {regularizeMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
+
+            <Button type="submit">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin hidden" />
               Submit Request
             </Button>
           </form>
