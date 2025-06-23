@@ -13,12 +13,12 @@ import { useUserScopedData } from "@/hooks/useUserScopedData";
 
 export default function LeavePage() {
   const [activeTab, setActiveTab] = useState("applications");
-  const { user } = useUserScopedData();
-  const getQuotas = useLeaveStore((state) => state.getLeaveQuotasForUser);
+  const { user, quotas } = useUserScopedData();
   const getUsed = useLeaveStore((state) => state.getUsedQuotaByTypeForUser);
   const { getLeaveTypeById } = useLeaveMetadataStore();
 
-  const [leaveBalances, setLeaveBalances] = useState<{
+  const [leaveBalances, setLeaveBalances] = useState<
+    {
       id: string;
       name: string;
       colorCode: string;
@@ -26,12 +26,10 @@ export default function LeavePage() {
       usedQuota: number;
       remainingQuota: number;
       percentUsed: number;
-    }[]>([]);
+    }[]
+  >([]);
 
   useEffect(() => {
-    if (!user?.id) return;
-
-    const quotas = getQuotas(user.id);
     const used = getUsed(user.id);
 
     const balances = quotas.map((quota) => {
@@ -53,7 +51,7 @@ export default function LeavePage() {
     });
 
     setLeaveBalances(balances);
-  }, [user?.id, getQuotas, getUsed, getLeaveTypeById]);
+  }, [quotas]);
 
   return (
     <DashboardLayout title="Leave Management">
@@ -69,7 +67,10 @@ export default function LeavePage() {
               }}
             >
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-medium" style={{ color: balance.colorCode }}>
+                <h3
+                  className="text-base font-medium"
+                  style={{ color: balance.colorCode }}
+                >
                   {balance.name}
                 </h3>
                 <Badge
@@ -92,7 +93,8 @@ export default function LeavePage() {
                   <span className="text-sm text-gray-500 ml-1">days left</span>
                 </div>
                 <div className="text-sm text-gray-500">
-                  of <span className="font-medium">{balance.totalQuota}</span> days
+                  of <span className="font-medium">{balance.totalQuota}</span>{" "}
+                  days
                 </div>
               </div>
 
@@ -101,7 +103,9 @@ export default function LeavePage() {
                   <div
                     className="h-2.5 rounded-full"
                     style={{
-                      width: `${(balance.remainingQuota / balance.totalQuota) * 100}%`,
+                      width: `${
+                        (balance.remainingQuota / balance.totalQuota) * 100
+                      }%`,
                       backgroundColor: balance.colorCode,
                     }}
                   ></div>
@@ -125,7 +129,9 @@ export default function LeavePage() {
               >
                 <div className="border-b px-6 py-3">
                   <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="applications">Leave Applications</TabsTrigger>
+                    <TabsTrigger value="applications">
+                      Leave Applications
+                    </TabsTrigger>
                     <TabsTrigger value="calendar">Leave Calendar</TabsTrigger>
                   </TabsList>
                 </div>
