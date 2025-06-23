@@ -84,6 +84,17 @@ interface AuthState {
   logout: () => void;
   register: (data: RegisterData) => Promise<User>;
   _repersist: () => void;
+  updateProfile: (
+    id: string,
+    updates: Partial<
+      Omit<User, "id" | "username" | "companyId" | "joinDate" | "role">
+    >
+  ) => void;
+  updatePassword: (
+    id: string,
+    currentPassword: string,
+    newPassword: string
+  ) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -129,7 +140,7 @@ export const useAuthStore = create<AuthState>()(
 
         const newUser: User = {
           ...data,
-          id: uuid(), 
+          id: uuid(),
           joinDate: new Date(),
           companyId: `SF-${String(users.length + 1).padStart(3, "0")}`,
         };
@@ -148,6 +159,27 @@ export const useAuthStore = create<AuthState>()(
 
       _repersist: () => {
         useAuthStore.persist.rehydrate();
+      },
+      updateProfile: (id, updates) => {
+        const { users } = get();
+        const updatedUsers = users.map((u) =>
+          u.id === id ? { ...u, ...updates } : u
+        );
+        const updatedUser = updatedUsers.find((u) => u.id === id) || null;
+        set({ users: updatedUsers, user: updatedUser });
+      },
+
+      updatePassword: (id, currentPassword, newPassword) => {
+        const { users } = get();
+        const user = users.find((u) => u.id === id);
+        if (!user || user.password !== currentPassword) {
+          throw new Error("Current password is incorrect");
+        }
+
+        const updatedUsers = users.map((u) =>
+          u.id === id ? { ...u, password: newPassword } : u
+        );
+        set({ users: updatedUsers });
       },
     }),
     {
