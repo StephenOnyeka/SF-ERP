@@ -12,5 +12,7 @@ Of recent I was able to change the frontend storage from Drizzle ORM and postgre
 
 20th June - I made a lot of changes that affected the logic keeping the check-in check-out running smoothly. Very badly. I'm still on towards fixing it. 
 
+21st June - Was working on the attendance activities. There was a lot reconfigurations on the backend process, it's  relationship with the frontend, and routing.  Not happy with the outcome.
+
 23th June - 
 Ended up reverting the changes I made so far. After trying to figure out the problem and a way to resolve it; leading me to abyss, I had to turn back to when it was functioning properly. The Check-in check-out successful operations.
