@@ -34,22 +34,10 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/use-auth";
 
 import { format, subDays, parseISO } from "date-fns";
 
-type AttendanceRecord = {
-  _id: string;
-  date: string;
-  checkIn?: { time: string };
-  checkOut?: { time: string };
-  status: string;
-  workHours?: string;
-  notes?: string;
-};
-
 export default function AttendanceTable() {
-  const { user } = useAuth();
   // State for filters
   const [period, setPeriod] = useState("7");
   const [currentPage, setCurrentPage] = useState(1);
@@ -57,46 +45,27 @@ export default function AttendanceTable() {
 
   // Calculate date range based on period
   const endDate = new Date();
-  const startDate = subDays(endDate, parseInt(period) - 1);
+  const startDate = subDays(endDate, parseInt(period));
 
   // Format dates for query key to prevent unnecessary re-renders
   const formattedStartDate = format(startDate, "yyyy-MM-dd");
   const formattedEndDate = format(endDate, "yyyy-MM-dd");
 
   // Query attendance data with proper caching
-  const endpoint =
-    user?.role === "admin" || user?.role === "hr"
-      ? `/api/attendance?startDate=${formattedStartDate}&endDate=${formattedEndDate}`
-      : `/api/attendance/my-attendance?startDate=${formattedStartDate}&endDate=${formattedEndDate}`;
-  const {
-    data: attendanceData,
-    isLoading,
-    error: attendanceError,
-  } = useQuery<AttendanceRecord[], Error>({
-    queryKey: [endpoint],
+  const { data: attendanceData, isLoading } = useQuery<any[]>({
+    queryKey: ["attendance", formattedStartDate, formattedEndDate],
     queryFn: async () => {
-      const response = await fetch(endpoint);
+      const response = await fetch(
+        `/api/attendance?startDate=${formattedStartDate}&endDate=${formattedEndDate}`
+      );
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Attendance fetch failed:", response.status, errorText);
         throw new Error("Failed to fetch attendance data");
       }
-      try {
-        const json = await response.json();
-        console.log("AttendanceTable fetched JSON:", json);
-        return json;
-      } catch (err) {
-        console.error("Failed to parse JSON. Response object:", response, err);
-        throw new Error("Failed to parse attendance data as JSON.");
-      }
+      return response.json();
     },
     staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
-    initialData: [],
+    cacheTime: 30 * 60 * 1000, // Cache persists for 30 minutes
   });
-
-  // Debug: Log attendance data and endpoint
-  console.log("AttendanceTable endpoint:", endpoint);
-  console.log("AttendanceTable data:", attendanceData);
 
   // Reset to first page when period changes
   useEffect(() => {
@@ -181,59 +150,54 @@ export default function AttendanceTable() {
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
-    // Show up to 3 page numbers: previous, current, next
-    let pages: number[] = [];
-    if (totalPages <= 3) {
-      pages = Array.from({ length: totalPages }, (_, i) => i + 1);
-    } else if (currentPage === 1) {
-      pages = [1, 2, 3];
-    } else if (currentPage === totalPages) {
-      pages = [totalPages - 2, totalPages - 1, totalPages];
-    } else {
-      pages = [currentPage - 1, currentPage, currentPage + 1];
-    }
-
     return (
       <Pagination>
         <PaginationContent>
           <PaginationItem>
             <PaginationPrevious
               onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              aria-disabled={currentPage <= 1}
+              isActive={currentPage > 1}
             />
           </PaginationItem>
-          {pages.map((pageNumber) => (
-            <PaginationItem key={pageNumber}>
-              <PaginationLink
-                aria-current={pageNumber === currentPage ? "page" : undefined}
-                onClick={() => setCurrentPage(pageNumber)}
-                className={pageNumber === currentPage ? "font-bold" : ""}
-              >
-                {pageNumber}
-              </PaginationLink>
-            </PaginationItem>
-          ))}
-          {pages[pages.length - 1] < totalPages && (
-            <>
-              <PaginationItem>
-                <span className="px-4 py-2">...</span>
-              </PaginationItem>
-              <PaginationItem key={totalPages}>
+
+          {Array.from({ length: Math.min(totalPages, 3) }).map((_, index) => {
+            const pageNumber = index + 1;
+            return (
+              <PaginationItem key={pageNumber}>
                 <PaginationLink
+                  isActive={pageNumber === currentPage}
+                  onClick={() => setCurrentPage(pageNumber)}
+                >
+                  {pageNumber}
+                </PaginationLink>
+              </PaginationItem>
+            );
+          })}
+
+          {totalPages > 3 && currentPage < totalPages && (
+            <>
+              {currentPage < totalPages - 1 && (
+                <PaginationItem>
+                  <span className="px-4 py-2">...</span>
+                </PaginationItem>
+              )}
+              <PaginationItem>
+                <PaginationLink
+                  isActive={totalPages === currentPage}
                   onClick={() => setCurrentPage(totalPages)}
-                  className={totalPages === currentPage ? "font-bold" : ""}
                 >
                   {totalPages}
                 </PaginationLink>
               </PaginationItem>
             </>
           )}
+
           <PaginationItem>
             <PaginationNext
               onClick={() =>
                 setCurrentPage((prev) => Math.min(prev + 1, totalPages))
               }
-              aria-disabled={currentPage >= totalPages}
+              isActive={currentPage < totalPages}
             />
           </PaginationItem>
         </PaginationContent>
@@ -275,22 +239,6 @@ export default function AttendanceTable() {
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
-        ) : !attendanceData ? (
-          <div className="text-center text-gray-500 py-8">
-            {attendanceError ? (
-              <>
-                Error loading attendance data.
-                <br />
-                {attendanceError.message}
-              </>
-            ) : (
-              <>
-                No attendance data received from the server.
-                <br />
-                Please check your network or contact support.
-              </>
-            )}
-          </div>
         ) : (
           <>
             <div className="rounded-md border">
@@ -306,7 +254,7 @@ export default function AttendanceTable() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedData.map((record: AttendanceRecord) => (
+                  {paginatedData.map((record) => (
                     <TableRow key={record._id}>
                       <TableCell>{formatDate(record.date)}</TableCell>
                       <TableCell>
