@@ -139,8 +139,8 @@ export default function LeaveApplicationForm() {
       });
     }
   };
-  console.log(leaveTypes,"leave types")
-  console.log(user,"this is the user")
+  // console.log(leaveTypes,"leave types")
+  // console.log(user,"this is the user")
   return (
     <Card>
       <CardHeader>

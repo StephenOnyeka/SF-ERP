@@ -76,7 +76,7 @@ export default function LeaveApplicationsTable() {
     endDate: string | Date,
     totalDays: number
   ) => {
-    console.log(typeof startDate, startDate, "startDate");
+    // console.log(typeof startDate, startDate, "startDate");
     const start =
       typeof startDate === "string" ? parseISO(startDate) : new Date(startDate);
     const end =
