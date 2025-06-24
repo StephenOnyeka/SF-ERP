@@ -2,6 +2,7 @@ import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
 import { useEffect, useState } from "react";
 import { useAuthStore } from "@/stores/auth-store";
+import { useAuth } from "@/hooks/use-auth";
 
 export function ProtectedRoute({
   path,
@@ -10,7 +11,7 @@ export function ProtectedRoute({
   path: string;
   component: () => React.JSX.Element;
 }) {
-  const user = useAuthStore((state) => state.user);
+  const { user } = useAuth();
   const [isPageTransitioning, setIsPageTransitioning] = useState(false);
 
   // Debug
@@ -51,7 +52,11 @@ export function ProtectedRoute({
   // Authenticated state
   return (
     <Route path={path}>
-      <div className={`transition-opacity duration-300 ${isPageTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+      <div
+        className={`transition-opacity duration-300 ${
+          isPageTransitioning ? "opacity-0" : "opacity-100"
+        }`}
+      >
         <Component />
       </div>
     </Route>
