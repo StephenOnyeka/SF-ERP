@@ -42,6 +42,7 @@ export default function AttendanceStatus() {
   const handleCheckOut = () => {
     if (user) {
       checkOut(user.id!);
+
       toast({
         title: "Checked out successfully",
         description: `You clocked out at ${format(new Date(), "h:mm a")}`,
