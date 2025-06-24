@@ -1,24 +1,44 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Salary } from '../../../shared/schema';
+import { v4 as uuid } from 'uuid';
 
-// This is the shape of the data our form will provide.
-export type NewSalaryData = Omit<Salary, 'id' | 'paymentDate'>;
-
-const getPreviousMonth = () => { /* ... (unchanged) ... */ 
-    const date = new Date();
-    date.setMonth(date.getMonth() - 1);
-    return { month: date.getMonth() + 1, year: date.getFullYear() };
+// Extended salary type with timestamp
+export interface ExtendedSalary extends Salary {
+  createdAt: Date;
 }
 
-const generateInitialSalaryData = (): Salary[] => { /* ... (unchanged) ... */ 
-    const { month, year } = getPreviousMonth();
-    return [{ id: 1, userId: 3, month, year, baseSalary: 5000, bonus: 200, deductions: 150, netSalary: 5050, paymentStatus: 'paid', paymentDate: new Date() }];
+// Form input type
+export type NewSalaryData = Omit<ExtendedSalary, 'id' | 'paymentDate' | 'createdAt'>;
+
+const getPreviousMonth = () => {
+  const date = new Date();
+  date.setMonth(date.getMonth() - 1);
+  return { month: date.getMonth() + 1, year: date.getFullYear() };
+};
+
+// Generate seeded salary data (optional)
+const generateInitialSalaryData = (): ExtendedSalary[] => {
+  const { month, year } = getPreviousMonth();
+  return [
+    {
+      id: uuid(),
+      userId: "test_employee", // use UUID string if your users have UUIDs
+      month,
+      year,
+      baseSalary: 5000,
+      bonus: 200,
+      deductions: 150,
+      netSalary: 5050,
+      paymentStatus: 'paid',
+      paymentDate: new Date(),
+      createdAt: new Date(),
+    },
+  ];
 };
 
 interface SalaryState {
-  salaryRecords: Salary[];
-  // ADD a new action to create a salary record
+  salaryRecords: ExtendedSalary[];
   addSalaryRecord: (newRecord: NewSalaryData) => void;
 }
 
@@ -27,29 +47,28 @@ export const useSalaryStore = create<SalaryState>()(
     (set, get) => ({
       salaryRecords: generateInitialSalaryData(),
 
-      // NEW Action implementation
-      addSalaryRecord: (newRecordData: NewSalaryData) => {
-        const currentRecords = get().salaryRecords;
-        
-        // Check for duplicates
-        const recordExists = currentRecords.some(
-          rec => rec.userId === newRecordData.userId &&
-                 rec.month === newRecordData.month &&
-                 rec.year === newRecordData.year
+      addSalaryRecord: (newData: NewSalaryData) => {
+        const current = get().salaryRecords;
+
+        const duplicate = current.some(
+          (rec) =>
+            rec.userId === newData.userId &&
+            rec.month === newData.month &&
+            rec.year === newData.year
         );
 
-        if (recordExists) {
-            throw new Error('A salary record for this employee for this month already exists.');
+        if (duplicate) {
+          throw new Error("A salary record for this employee for this month already exists.");
         }
 
-        const maxId = currentRecords.reduce((max, r) => (r.id! > max ? r.id! : max), 0);
-        
-        const newRecord: Salary = {
-            ...newRecordData,
-            id: maxId + 1,
+        const newRecord: ExtendedSalary = {
+          ...newData,
+          id: uuid(),
+          paymentDate: new Date(),
+          createdAt: new Date(),
         };
 
-        set({ salaryRecords: [...currentRecords, newRecord] });
+        set({ salaryRecords: [...current, newRecord] });
       },
     }),
     {
