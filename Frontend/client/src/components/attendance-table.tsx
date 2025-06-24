@@ -167,7 +167,9 @@ export default function AttendanceTable() {
         <div className="flex justify-between items-center">
           <div>
             <CardTitle>Attendance Log</CardTitle>
-            <CardDescription>View your attendance history and status</CardDescription>
+            <CardDescription>
+              View your attendance history and status
+            </CardDescription>
           </div>
           <div className="flex items-center space-x-4">
             <Select value={period} onValueChange={setPeriod}>
@@ -209,12 +211,24 @@ export default function AttendanceTable() {
                 <TableBody>
                   {paginatedData.map((record) => (
                     <TableRow key={record.id}>
-                       {(user?.role === "admin" || user?.role === "hr") && (
+                      {(user?.role === "admin" ||
+                        user?.role === "hr" ||
+                        user?.role === "employee") && (
                         <TableCell>{getUserFullName(record.userId)}</TableCell>
                       )}
-                      <TableCell>{formatDate(record.date.toString())}</TableCell>
-                      <TableCell>{record.checkInTime ? formatTime(record.checkInTime) : "--"}</TableCell>
-                      <TableCell>{record.checkOutTime ? formatTime(record.checkOutTime) : "--"}</TableCell>
+                      <TableCell>
+                        {formatDate(record.date.toString())}
+                      </TableCell>
+                      <TableCell>
+                        {record.checkInTime
+                          ? formatTime(record.checkInTime)
+                          : "--"}
+                      </TableCell>
+                      <TableCell>
+                        {record.checkOutTime
+                          ? formatTime(record.checkOutTime)
+                          : "--"}
+                      </TableCell>
                       <TableCell>{getStatusBadge(record.status)}</TableCell>
                       <TableCell>{record.workingHours || "--"}</TableCell>
                       <TableCell>{record.notes || "--"}</TableCell>
