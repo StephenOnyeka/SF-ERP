@@ -16,3 +16,6 @@ Of recent I was able to change the frontend storage from Drizzle ORM and postgre
 
 23th June - 
 Ended up reverting the changes I made so far. After trying to figure out the problem and a way to resolve it; leading me to abyss, I had to turn back to when it was functioning properly. The Check-in check-out successful operations.
+
+24th June -
+Mergerd changes from richie branch
