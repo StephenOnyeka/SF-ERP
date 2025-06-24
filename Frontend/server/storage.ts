@@ -58,6 +58,12 @@ export interface IStorage {
   
   // Session store
   sessionStore: any;
+
+  // New methods
+  getAllLeaveApplications(): Promise<LeaveApplication[]>;
+  getAllLeaveQuotas(): Promise<LeaveQuota[]>;
+  getAllSalaries(): Promise<Salary[]>;
+  getAllAttendances(): Promise<Attendance[]>;
 }
 
 // In-memory storage implementation
@@ -70,7 +76,7 @@ export class MemStorage implements IStorage {
   private holidays: Map<string, Holiday>;
   private salaries: Map<string, Salary>;
 
-  sessionStore: typeof MemoryStore;
+  sessionStore: any;
 
   constructor() {
     this.users = new Map();
@@ -405,6 +411,22 @@ export class MemStorage implements IStorage {
     const updatedSalary = { ...salary, ...salaryData };
     this.salaries.set(id, updatedSalary);
     return updatedSalary;
+  }
+
+  async getAllLeaveApplications(): Promise<LeaveApplication[]> {
+    return Array.from(this.leaveApplications.values());
+  }
+
+  async getAllLeaveQuotas(): Promise<LeaveQuota[]> {
+    return Array.from(this.leaveQuotas.values());
+  }
+
+  async getAllSalaries(): Promise<Salary[]> {
+    return Array.from(this.salaries.values());
+  }
+
+  async getAllAttendances(): Promise<Attendance[]> {
+    return Array.from(this.attendances.values());
   }
 }
 

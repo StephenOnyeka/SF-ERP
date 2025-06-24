@@ -187,22 +187,31 @@ export default function UsersTable() {
     setIsRoleDialogOpen(true);
   };
 
-  const confirmDeleteUser = () => {
-    if (deleteUserId) {
-      handleDeleteUser({
-        id: deleteUserId,
-        firstName: "",
-        lastName: "",
-        email: "",
-        role: "",
-        isActive: true,
-      });
-    }
-  };
+  const roleUpdateMutation = useMutation({
+    mutationFn: async ({
+      userId,
+      newRole,
+    }: {
+      userId: string;
+      newRole: string;
+    }) => handleRoleUpdate(userId, newRole),
+  });
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => adminApi.deleteUser(userId),
+    onSuccess: fetchUsers,
+  });
 
   const confirmChangeRole = () => {
     if (selectedUser && newRole) {
-      handleRoleUpdate(selectedUser.id, newRole);
+      roleUpdateMutation.mutate({ userId: selectedUser.id, newRole });
+      setIsRoleDialogOpen(false);
+    }
+  };
+
+  const confirmDeleteUser = () => {
+    if (deleteUserId) {
+      deleteUserMutation.mutate(deleteUserId);
+      setIsDeleteDialogOpen(false);
     }
   };
 

@@ -37,6 +37,7 @@ export const adminApi = {
   // User Management
   getUsers: () => api.get('/admin/users'),
   updateUser: (id: string, data: any) => api.patch(`/admin/users/${id}`, data),
+  deleteUser: (id: string) => api.delete(`/admin/users/${id}`),
   
   // System Settings
   getSettings: () => api.get('/admin/settings'),
