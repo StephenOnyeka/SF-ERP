@@ -6,8 +6,6 @@ import { z } from "zod";
 import {
   insertAttendanceSchema,
   insertLeaveApplicationSchema,
-  insertLeaveQuotaSchema,
-  insertLeaveTypeSchema,
   insertHolidaySchema,
   insertSalarySchema,
   userSchema,
@@ -74,7 +72,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get a single user by ID
   app.get("/api/users/:id", isAuthenticated, async (req, res) => {
     try {
-      const userId = parseInt(req.params.id);
+      const userId = req.params.id;
       if (isNaN(userId)) {
         return res.status(400).json({ message: "Invalid user ID" });
       }
@@ -103,7 +101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/users/:id", isAuthenticated, async (req, res) => {
     try {
       const currentUser = req.user as any;
-      const userId = parseInt(req.params.id);
+      const userId = req.params.id;
       
       if (isNaN(userId)) {
         return res.status(400).json({ message: "Invalid user ID" });
@@ -152,7 +150,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Change user role (Admin only)
   app.patch("/api/users/:id/role", isAuthenticated, hasRole(["admin"]), async (req, res) => {
     try {
-      const userId = parseInt(req.params.id);
+      const userId = req.params.id;
       const { role } = req.body;
       
       if (isNaN(userId)) {
@@ -331,7 +329,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const attendances = await storage.getAttendancesByDate(date);
       
       if (userIdParam) {
-        const userId = parseInt(userIdParam);
+        const userId = req.params.id;
         const filteredAttendances = attendances.filter(a => a.userId === userId);
         return res.json(filteredAttendances);
       }
@@ -340,7 +338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     
     if (userIdParam) {
-      const userId = parseInt(userIdParam);
+      const userId = req.params.id;
       const attendances = await storage.getAttendancesByUserId(userId);
       return res.json(attendances);
     }
@@ -527,7 +525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Approve/Reject leave application (admin/HR only)
   app.patch("/api/leave-applications/:id", hasRole(["admin", "hr"]), async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const { status, comments } = req.body;
     
     if (!["approved", "rejected"].includes(status)) {
@@ -624,7 +622,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Admin/HR can update salary status
   app.patch("/api/salary/:id", hasRole(["admin", "hr"]), async (req, res) => {
-    const id = parseInt(req.params.id);
+    const id = req.params.id;
     const { paymentStatus, paymentDate, notes } = req.body;
     
     if (!["pending", "paid"].includes(paymentStatus)) {
@@ -664,7 +662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Get all users or specific user
     let users;
     if (userIdParam) {
-      const userId = parseInt(userIdParam);
+      const userId = req.params.id;
       const user = await storage.getUser(userId);
       if (user) {
         users = [user];
@@ -834,7 +832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/users/:id', async (req, res) => {
     try {
-      const user = await storage.getUser(Number(req.params.id));
+      const user = await storage.getUser(req.params.id);
       if (!user) {
         return res.status(404).json({ message: 'User not found' });
       }

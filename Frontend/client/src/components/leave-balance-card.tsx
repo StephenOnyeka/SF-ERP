@@ -6,7 +6,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { useEffect, useState } from "react";
 import { useLeaveMetadataStore } from "@/stores/leave-metadata-store";
 
-
 export default function LeaveBalanceCard() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -17,7 +16,7 @@ export default function LeaveBalanceCard() {
 
   const [balances, setBalances] = useState<
     {
-      id: number;
+      id: string;
       name: string;
       colorCode: string;
       totalQuota: number;
@@ -27,7 +26,7 @@ export default function LeaveBalanceCard() {
     }[]
   >([]);
 
-useEffect(() => {
+  useEffect(() => {
     if (!user?.id) return;
 
     const quotas = getQuotas(user.id);
@@ -97,11 +96,13 @@ useEffect(() => {
                 value={item.percentRemaining}
                 className="h-2.5 bg-gray-200"
                 // indicatorClassName=""
-                style={{
-                  // override Tailwind class with inline style
-                  "--tw-bg-opacity": "1",
-                  backgroundColor: item.colorCode,
-                } as React.CSSProperties}
+                style={
+                  {
+                    // override Tailwind class with inline style
+                    "--tw-bg-opacity": "1",
+                    backgroundColor: item.colorCode,
+                  } as React.CSSProperties
+                }
               />
             </div>
           ))}

@@ -1,84 +1,77 @@
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { 
-  User, InsertUser, Attendance, InsertAttendance, 
-  LeaveType, InsertLeaveType, LeaveQuota, InsertLeaveQuota,
-  LeaveApplication, InsertLeaveApplication, Holiday, InsertHoliday,
-  Salary, InsertSalary 
+  User, Attendance, 
+  LeaveType, LeaveQuota,
+  LeaveApplication, Holiday,
+  Salary 
 } from "@shared/schema";
 import { z } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 
 const MemoryStore = createMemoryStore(session);
 
 // Define the storage interface
 export interface IStorage {
   // User operations
-  getUser(id: number): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
-  createUser(user: InsertUser): Promise<User>;
-  updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
+  createUser(user: User): Promise<User>;
+  updateUser(id: string, user: Partial<User>): Promise<User | undefined>;
   
   // Attendance operations
-  getAttendance(id: number): Promise<Attendance | undefined>;
-  getAttendancesByUserId(userId: number): Promise<Attendance[]>;
+  getAttendance(id: string): Promise<Attendance | undefined>;
+  getAttendancesByUserId(userId: string): Promise<Attendance[]>;
   getAttendancesByDate(date: Date): Promise<Attendance[]>;
-  getAttendancesByDateRange(userId: number, startDate: Date, endDate: Date): Promise<Attendance[]>;
-  createAttendance(attendance: InsertAttendance): Promise<Attendance>;
-  updateAttendance(id: number, attendance: Partial<Attendance>): Promise<Attendance | undefined>;
+  getAttendancesByDateRange(userId: string, startDate: Date, endDate: Date): Promise<Attendance[]>;
+  createAttendance(attendance: Attendance): Promise<Attendance>;
+  updateAttendance(id: string, attendance: Partial<Attendance>): Promise<Attendance | undefined>;
   
   // Leave type operations
-  getLeaveType(id: number): Promise<LeaveType | undefined>;
+  getLeaveType(id: string): Promise<LeaveType | undefined>;
   getAllLeaveTypes(): Promise<LeaveType[]>;
-  createLeaveType(leaveType: InsertLeaveType): Promise<LeaveType>;
+  createLeaveType(leaveType: LeaveType): Promise<LeaveType>;
   
   // Leave quota operations
-  getLeaveQuota(id: number): Promise<LeaveQuota | undefined>;
-  getLeaveQuotasByUserId(userId: number): Promise<LeaveQuota[]>;
-  createLeaveQuota(leaveQuota: InsertLeaveQuota): Promise<LeaveQuota>;
-  updateLeaveQuota(id: number, leaveQuota: Partial<LeaveQuota>): Promise<LeaveQuota | undefined>;
+  getLeaveQuota(id: string): Promise<LeaveQuota | undefined>;
+  getLeaveQuotasByUserId(userId: string): Promise<LeaveQuota[]>;
+  createLeaveQuota(leaveQuota: LeaveQuota): Promise<LeaveQuota>;
+  updateLeaveQuota(id: string, leaveQuota: Partial<LeaveQuota>): Promise<LeaveQuota | undefined>;
   
   // Leave application operations
-  getLeaveApplication(id: number): Promise<LeaveApplication | undefined>;
-  getLeaveApplicationsByUserId(userId: number): Promise<LeaveApplication[]>;
-  createLeaveApplication(leaveApplication: InsertLeaveApplication): Promise<LeaveApplication>;
-  updateLeaveApplication(id: number, leaveApplication: Partial<LeaveApplication>): Promise<LeaveApplication | undefined>;
+  getLeaveApplication(id: string): Promise<LeaveApplication | undefined>;
+  getLeaveApplicationsByUserId(userId: string): Promise<LeaveApplication[]>;
+  createLeaveApplication(leaveApplication: LeaveApplication): Promise<LeaveApplication>;
+  updateLeaveApplication(id: string, leaveApplication: Partial<LeaveApplication>): Promise<LeaveApplication | undefined>;
   
   // Holiday operations
-  getHoliday(id: number): Promise<Holiday | undefined>;
+  getHoliday(id: string): Promise<Holiday | undefined>;
   getAllHolidays(): Promise<Holiday[]>;
-  createHoliday(holiday: InsertHoliday): Promise<Holiday>;
+  createHoliday(holiday: Holiday): Promise<Holiday>;
   
   // Salary operations
-  getSalary(id: number): Promise<Salary | undefined>;
-  getSalariesByUserId(userId: number): Promise<Salary[]>;
-  createSalary(salary: InsertSalary): Promise<Salary>;
-  updateSalary(id: number, salary: Partial<Salary>): Promise<Salary | undefined>;
+  getSalary(id: string): Promise<Salary | undefined>;
+  getSalariesByUserId(userId: string): Promise<Salary[]>;
+  createSalary(salary: Salary): Promise<Salary>;
+  updateSalary(id: string, salary: Partial<Salary>): Promise<Salary | undefined>;
   
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any;
 }
 
 // In-memory storage implementation
 export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private attendances: Map<number, Attendance>;
-  private leaveTypes: Map<number, LeaveType>;
-  private leaveQuotas: Map<number, LeaveQuota>;
-  private leaveApplications: Map<number, LeaveApplication>;
-  private holidays: Map<number, Holiday>;
-  private salaries: Map<number, Salary>;
-  
-  private userId: number;
-  private attendanceId: number;
-  private leaveTypeId: number;
-  private leaveQuotaId: number;
-  private leaveApplicationId: number;
-  private holidayId: number;
-  private salaryId: number;
-  
-  sessionStore: session.SessionStore;
-  
+  private users: Map<string, User>;
+  private attendances: Map<string, Attendance>;
+  private leaveTypes: Map<string, LeaveType>;
+  private leaveQuotas: Map<string, LeaveQuota>;
+  private leaveApplications: Map<string, LeaveApplication>;
+  private holidays: Map<string, Holiday>;
+  private salaries: Map<string, Salary>;
+
+  sessionStore: typeof MemoryStore;
+
   constructor() {
     this.users = new Map();
     this.attendances = new Map();
@@ -87,52 +80,44 @@ export class MemStorage implements IStorage {
     this.leaveApplications = new Map();
     this.holidays = new Map();
     this.salaries = new Map();
-    
-    this.userId = 1;
-    this.attendanceId = 1;
-    this.leaveTypeId = 1;
-    this.leaveQuotaId = 1;
-    this.leaveApplicationId = 1;
-    this.holidayId = 1;
-    this.salaryId = 1;
-    
+
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000 // 24 hours
     });
-    
+
     // Initialize with default leave types
     this.initializeLeaveTypes();
     this.initializeHolidays();
-    
+
     // Create demo admin user
     console.log("Creating demo admin user...");
     this.createDemoUsers();
   }
-  
+
   private initializeLeaveTypes() {
     const leaveTypes = [
       { name: "Paid Leave", description: "Annual paid leave", colorCode: "#3B82F6" },
       { name: "Sick Leave", description: "Leave for health issues", colorCode: "#10B981" },
       { name: "Casual Leave", description: "Short notice leave", colorCode: "#6366F1" }
     ];
-    
+
     leaveTypes.forEach(type => {
-      this.createLeaveType(type as InsertLeaveType);
+      this.createLeaveType(type as LeaveType); // Remove InsertLeaveType
     });
   }
-  
+
   private initializeHolidays() {
     const today = new Date();
     const year = today.getFullYear();
-    
+
     const holidays = [
       { name: "Independence Day", date: new Date(year, 7, 15), description: "National holiday", type: "national" },
       { name: "Gandhi Jayanti", date: new Date(year, 9, 2), description: "National holiday", type: "national" },
       { name: "Diwali", date: new Date(year, 9, 24), description: "Festival", type: "festival" }
     ];
-    
+
     holidays.forEach(holiday => {
-      this.createHoliday(holiday as InsertHoliday);
+      this.createHoliday(holiday as Holiday); // Remove InsertHoliday
     });
   }
   
@@ -145,16 +130,14 @@ export class MemStorage implements IStorage {
         firstName: "Admin",
         lastName: "User",
         email: "admin@example.com",
-        role: "admin",
+        role: "admin" as const,
         department: "Administration",
         position: "System Administrator",
-        joinDate: new Date().toISOString(),
+        joinDate: new Date(),
         companyId: "SF-001"
       };
-      
       const user = await this.createUser(adminUser);
       console.log("Demo admin user created:", user.username, "CompanyID:", user.companyId);
-      
       // Create an HR user for testing
       const hrUser = {
         username: "hr",
@@ -162,16 +145,14 @@ export class MemStorage implements IStorage {
         firstName: "Sarah",
         lastName: "Johnson",
         email: "sarah.johnson@example.com",
-        role: "hr",
+        role: "hr" as const,
         department: "Human Resources",
         position: "HR Manager",
-        joinDate: new Date().toISOString(),
+        joinDate: new Date(),
         companyId: "SF-002"
       };
-      
       const hr = await this.createUser(hrUser);
       console.log("Demo HR user created:", hr.username, "CompanyID:", hr.companyId);
-      
       // Create employee users for testing
       const employee1 = {
         username: "employee",
@@ -179,29 +160,26 @@ export class MemStorage implements IStorage {
         firstName: "John",
         lastName: "Smith",
         email: "john.smith@example.com",
-        role: "employee",
+        role: "employee" as const,
         department: "Engineering",
         position: "Software Developer",
-        joinDate: new Date().toISOString(),
+        joinDate: new Date(),
         companyId: "SF-004"
       };
-      
       const employee1Result = await this.createUser(employee1);
       console.log("Demo employee user created:", employee1Result.username, "CompanyID:", employee1Result.companyId);
-      
       const employee2 = {
         username: "employee2",
         password: "$2b$10$EpRnTzVlqHNP0.fUbXUwSOyuiXe/QLSUG6xNekdHgTGmrpHEfIoxm", // "password" hashed
         firstName: "Jane",
         lastName: "Doe",
         email: "jane.doe@example.com",
-        role: "employee",
+        role: "employee" as const,
         department: "Marketing",
         position: "Marketing Specialist",
-        joinDate: new Date().toISOString(),
+        joinDate: new Date(),
         companyId: "SF-005"
       };
-      
       const employee2Result = await this.createUser(employee2);
       console.log("Demo employee user created:", employee2Result.username, "CompanyID:", employee2Result.companyId);
     } catch (error) {
@@ -210,7 +188,7 @@ export class MemStorage implements IStorage {
   }
   
   // User operations
-  async getUser(id: number): Promise<User | undefined> {
+  async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
   }
   
@@ -222,109 +200,55 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values());
   }
   
-  async createUser(userData: InsertUser): Promise<User> {
-    const id = this.userId++;
-    
-    // Auto-generate company ID if not provided
-    let companyId = userData.companyId;
-    if (!companyId) {
-      // Find the highest existing company ID
-      const users = await this.getAllUsers();
-      let maxId = 0;
-      
-      users.forEach(user => {
-        if (user.companyId) {
-          const idNumber = parseInt(user.companyId.split('-')[1]);
-          if (!isNaN(idNumber) && idNumber > maxId) {
-            maxId = idNumber;
-          }
-        }
-      });
-      
-      // Generate next company ID
-      companyId = `SF-${String(maxId + 1).padStart(3, '0')}`;
-      console.log(`Generated new company ID: ${companyId}`);
-    }
-    
-    const user: User = { ...userData, id, companyId };
+  async createUser(userData: Omit<User, 'id'>): Promise<User> {
+    const id = uuidv4();
+    const user: User = {
+      ...userData,
+      id,
+      joinDate: userData.joinDate ? new Date(userData.joinDate) : new Date(),
+    };
     this.users.set(id, user);
-    
-    // Create default leave quotas for new user
-    const leaveTypes = await this.getAllLeaveTypes();
-    const currentYear = new Date().getFullYear();
-    
-    leaveTypes.forEach(leaveType => {
-      let totalQuota = 20; // Default quota for Paid Leave
-      
-      if (leaveType.name === "Sick Leave") totalQuota = 10;
-      if (leaveType.name === "Casual Leave") totalQuota = 8;
-      
-      this.createLeaveQuota({
-        userId: id,
-        leaveTypeId: leaveType.id,
-        totalQuota,
-        usedQuota: 0,
-        year: currentYear
-      });
-    });
-    
     return user;
   }
   
-  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+  async updateUser(id: string, userData: Partial<User>): Promise<User | undefined> {
     const user = this.users.get(id);
     if (!user) return undefined;
-    
     const updatedUser = { ...user, ...userData };
     this.users.set(id, updatedUser);
     return updatedUser;
   }
   
-  async deleteUser(id: number): Promise<boolean> {
-    // Check if user exists
+  async deleteUser(id: string): Promise<boolean> {
     const user = this.users.get(id);
     if (!user) return false;
-    
-    // Delete user
     const deleted = this.users.delete(id);
-    
-    // Remove associated records like attendance, leave quotas, etc.
-    // This is a simplified implementation - in a real system, you might want
-    // to handle these operations differently
-    
-    // Delete attendance records
+    // Remove associated records
     const attendanceRecords = await this.getAttendancesByUserId(id);
     attendanceRecords.forEach(record => {
-      this.attendances.delete(record.id);
+      if (record.id) this.attendances.delete(record.id);
     });
-    
-    // Delete leave quotas
     const leaveQuotas = await this.getLeaveQuotasByUserId(id);
     leaveQuotas.forEach(quota => {
-      this.leaveQuotas.delete(quota.id);
+      if (quota.id) this.leaveQuotas.delete(quota.id);
     });
-    
-    // Delete leave applications
     const leaveApplications = await this.getLeaveApplicationsByUserId(id);
     leaveApplications.forEach(application => {
-      this.leaveApplications.delete(application.id);
+      if (application.id) this.leaveApplications.delete(application.id);
     });
-    
-    // Delete salary records
     const salaries = await this.getSalariesByUserId(id);
     salaries.forEach(salary => {
-      this.salaries.delete(salary.id);
+      if (salary.id) this.salaries.delete(salary.id);
     });
-    
     return deleted;
   }
   
   // Attendance operations
-  async getAttendance(id: number): Promise<Attendance | undefined> {
+  async getAttendance(id: string): Promise<Attendance | undefined> {
     return this.attendances.get(id);
   }
   
-  async getAttendancesByUserId(userId: number): Promise<Attendance[]> {
+  async getAttendancesByUserId(userId: string): Promise<Attendance[]> {
     return Array.from(this.attendances.values())
       .filter(attendance => attendance.userId === userId)
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -339,7 +263,7 @@ export class MemStorage implements IStorage {
       });
   }
   
-  async getAttendancesByDateRange(userId: number, startDate: Date, endDate: Date): Promise<Attendance[]> {
+  async getAttendancesByDateRange(userId: string, startDate: Date, endDate: Date): Promise<Attendance[]> {
     const start = startDate.getTime();
     const end = endDate.getTime();
     
@@ -351,14 +275,14 @@ export class MemStorage implements IStorage {
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
   
-  async createAttendance(attendanceData: InsertAttendance): Promise<Attendance> {
-    const id = this.attendanceId++;
+  async createAttendance(attendanceData: Omit<Attendance, 'id'>): Promise<Attendance> {
+    const id = uuidv4();
     const attendance: Attendance = { ...attendanceData, id };
     this.attendances.set(id, attendance);
     return attendance;
   }
   
-  async updateAttendance(id: number, attendanceData: Partial<Attendance>): Promise<Attendance | undefined> {
+  async updateAttendance(id: string, attendanceData: Partial<Attendance>): Promise<Attendance | undefined> {
     const attendance = this.attendances.get(id);
     if (!attendance) return undefined;
     
@@ -368,7 +292,7 @@ export class MemStorage implements IStorage {
   }
   
   // Leave type operations
-  async getLeaveType(id: number): Promise<LeaveType | undefined> {
+  async getLeaveType(id: string): Promise<LeaveType | undefined> {
     return this.leaveTypes.get(id);
   }
   
@@ -376,31 +300,31 @@ export class MemStorage implements IStorage {
     return Array.from(this.leaveTypes.values());
   }
   
-  async createLeaveType(leaveTypeData: InsertLeaveType): Promise<LeaveType> {
-    const id = this.leaveTypeId++;
+  async createLeaveType(leaveTypeData: Omit<LeaveType, 'id'>): Promise<LeaveType> {
+    const id = uuidv4();
     const leaveType: LeaveType = { ...leaveTypeData, id };
     this.leaveTypes.set(id, leaveType);
     return leaveType;
   }
   
   // Leave quota operations
-  async getLeaveQuota(id: number): Promise<LeaveQuota | undefined> {
+  async getLeaveQuota(id: string): Promise<LeaveQuota | undefined> {
     return this.leaveQuotas.get(id);
   }
   
-  async getLeaveQuotasByUserId(userId: number): Promise<LeaveQuota[]> {
+  async getLeaveQuotasByUserId(userId: string): Promise<LeaveQuota[]> {
     return Array.from(this.leaveQuotas.values())
       .filter(quota => quota.userId === userId);
   }
   
-  async createLeaveQuota(leaveQuotaData: InsertLeaveQuota): Promise<LeaveQuota> {
-    const id = this.leaveQuotaId++;
+  async createLeaveQuota(leaveQuotaData: Omit<LeaveQuota, 'id'>): Promise<LeaveQuota> {
+    const id = uuidv4();
     const leaveQuota: LeaveQuota = { ...leaveQuotaData, id };
     this.leaveQuotas.set(id, leaveQuota);
     return leaveQuota;
   }
   
-  async updateLeaveQuota(id: number, leaveQuotaData: Partial<LeaveQuota>): Promise<LeaveQuota | undefined> {
+  async updateLeaveQuota(id: string, leaveQuotaData: Partial<LeaveQuota>): Promise<LeaveQuota | undefined> {
     const leaveQuota = this.leaveQuotas.get(id);
     if (!leaveQuota) return undefined;
     
@@ -410,24 +334,24 @@ export class MemStorage implements IStorage {
   }
   
   // Leave application operations
-  async getLeaveApplication(id: number): Promise<LeaveApplication | undefined> {
+  async getLeaveApplication(id: string): Promise<LeaveApplication | undefined> {
     return this.leaveApplications.get(id);
   }
   
-  async getLeaveApplicationsByUserId(userId: number): Promise<LeaveApplication[]> {
+  async getLeaveApplicationsByUserId(userId: string): Promise<LeaveApplication[]> {
     return Array.from(this.leaveApplications.values())
       .filter(application => application.userId === userId)
       .sort((a, b) => new Date(b.appliedAt).getTime() - new Date(a.appliedAt).getTime());
   }
   
-  async createLeaveApplication(leaveApplicationData: InsertLeaveApplication): Promise<LeaveApplication> {
-    const id = this.leaveApplicationId++;
+  async createLeaveApplication(leaveApplicationData: Omit<LeaveApplication, 'id'>): Promise<LeaveApplication> {
+    const id = uuidv4();
     const leaveApplication: LeaveApplication = { ...leaveApplicationData, id };
     this.leaveApplications.set(id, leaveApplication);
     return leaveApplication;
   }
   
-  async updateLeaveApplication(id: number, leaveApplicationData: Partial<LeaveApplication>): Promise<LeaveApplication | undefined> {
+  async updateLeaveApplication(id: string, leaveApplicationData: Partial<LeaveApplication>): Promise<LeaveApplication | undefined> {
     const leaveApplication = this.leaveApplications.get(id);
     if (!leaveApplication) return undefined;
     
@@ -437,7 +361,7 @@ export class MemStorage implements IStorage {
   }
   
   // Holiday operations
-  async getHoliday(id: number): Promise<Holiday | undefined> {
+  async getHoliday(id: string): Promise<Holiday | undefined> {
     return this.holidays.get(id);
   }
   
@@ -446,19 +370,19 @@ export class MemStorage implements IStorage {
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }
   
-  async createHoliday(holidayData: InsertHoliday): Promise<Holiday> {
-    const id = this.holidayId++;
+  async createHoliday(holidayData: Omit<Holiday, 'id'>): Promise<Holiday> {
+    const id = uuidv4();
     const holiday: Holiday = { ...holidayData, id };
     this.holidays.set(id, holiday);
     return holiday;
   }
   
   // Salary operations
-  async getSalary(id: number): Promise<Salary | undefined> {
+  async getSalary(id: string): Promise<Salary | undefined> {
     return this.salaries.get(id);
   }
   
-  async getSalariesByUserId(userId: number): Promise<Salary[]> {
+  async getSalariesByUserId(userId: string): Promise<Salary[]> {
     return Array.from(this.salaries.values())
       .filter(salary => salary.userId === userId)
       .sort((a, b) => {
@@ -467,14 +391,14 @@ export class MemStorage implements IStorage {
       });
   }
   
-  async createSalary(salaryData: InsertSalary): Promise<Salary> {
-    const id = this.salaryId++;
+  async createSalary(salaryData: Omit<Salary, 'id'>): Promise<Salary> {
+    const id = uuidv4();
     const salary: Salary = { ...salaryData, id };
     this.salaries.set(id, salary);
     return salary;
   }
   
-  async updateSalary(id: number, salaryData: Partial<Salary>): Promise<Salary | undefined> {
+  async updateSalary(id: string, salaryData: Partial<Salary>): Promise<Salary | undefined> {
     const salary = this.salaries.get(id);
     if (!salary) return undefined;
     

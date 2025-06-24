@@ -90,7 +90,7 @@ export const attendanceStorage = {
     attendanceStorage.setAttendances(attendances);
   },
 
-  updateAttendance: (id: number, updatedAttendance: Attendance): void => {
+  updateAttendance: (id: string, updatedAttendance: Attendance): void => {
     const attendances = attendanceStorage.getAttendances();
     const index = attendances.findIndex(a => a.id === id);
     if (index !== -1) {
@@ -116,7 +116,7 @@ export const leaveApplicationStorage = {
     leaveApplicationStorage.setLeaveApplications(applications);
   },
 
-  updateLeaveApplication: (id: number, updatedApplication: LeaveApplication): void => {
+  updateLeaveApplication: (id: string, updatedApplication: LeaveApplication): void => {
     const applications = leaveApplicationStorage.getLeaveApplications();
     const index = applications.findIndex(a => a.id === id);
     if (index !== -1) {
@@ -136,7 +136,7 @@ export const leaveQuotaStorage = {
     return storage.get(STORAGE_KEYS.LEAVE_QUOTAS, []);
   },
 
-  updateLeaveQuota: (id: number, updatedQuota: LeaveQuota): void => {
+  updateLeaveQuota: (id: string, updatedQuota: LeaveQuota): void => {
     const quotas = leaveQuotaStorage.getLeaveQuotas();
     const index = quotas.findIndex(q => q.id === id);
     if (index !== -1) {
@@ -162,7 +162,7 @@ export const holidayStorage = {
     holidayStorage.setHolidays(holidays);
   },
 
-  updateHoliday: (id: number, updatedHoliday: Holiday): void => {
+  updateHoliday: (id: string, updatedHoliday: Holiday): void => {
     const holidays = holidayStorage.getHolidays();
     const index = holidays.findIndex(h => h.id === id);
     if (index !== -1) {
@@ -188,7 +188,7 @@ export const salaryStorage = {
     salaryStorage.setSalaries(salaries);
   },
 
-  updateSalary: (id: number, updatedSalary: Salary): void => {
+  updateSalary: (id: string, updatedSalary: Salary): void => {
     const salaries = salaryStorage.getSalaries();
     const index = salaries.findIndex(s => s.id === id);
     if (index !== -1) {

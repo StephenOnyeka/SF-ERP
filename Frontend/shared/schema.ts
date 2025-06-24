@@ -37,7 +37,7 @@ export const leaveTypeSchema = z.object({
 export const leaveQuotaSchema = z.object({
   id: z.string().optional(),
   userId: z.string(),
-  leaveTypeId: z.number(),
+  leaveTypeId: z.string(), // changed from number to string
   totalQuota: z.number().min(0),
   usedQuota: z.number().min(0).default(0),
   year: z.number(),
@@ -46,7 +46,7 @@ export const leaveQuotaSchema = z.object({
 export const leaveApplicationSchema = z.object({
   id: z.string().optional(),
   userId: z.string(),
-  leaveTypeId: z.number(),
+  leaveTypeId: z.string(), // changed from number to string
   startDate: z.date(),
   endDate: z.date(),
   isFirstDayHalf: z.boolean().default(false),
@@ -55,7 +55,7 @@ export const leaveApplicationSchema = z.object({
   reason: z.string().optional(),
   status: z.enum(["pending", "approved", "rejected"]).default("pending"),
   appliedAt: z.date().default(() => new Date()),
-  approvedBy: z.number().optional(),
+  approvedBy: z.string().optional(), // changed from number to string
   approvedAt: z.date().optional(),
   comments: z.string().optional(),
 });

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { syncService } from '../services/sync';
-import { useToast } from './useToast';
+import { useToast } from './use-toast';
 
 export function useSync() {
   const [isSyncing, setIsSyncing] = useState(false);
