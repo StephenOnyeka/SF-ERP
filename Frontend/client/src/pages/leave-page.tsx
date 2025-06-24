@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import DashboardLayout from "@/layouts/dashboard-layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,22 +17,13 @@ export default function LeavePage() {
   const getUsed = useLeaveStore((state) => state.getUsedQuotaByTypeForUser);
   const { getLeaveTypeById } = useLeaveMetadataStore();
 
-  const [leaveBalances, setLeaveBalances] = useState<
-    {
-      id: string;
-      name: string;
-      colorCode: string;
-      totalQuota: number;
-      usedQuota: number;
-      remainingQuota: number;
-      percentUsed: number;
-    }[]
-  >([]);
 
-  useEffect(() => {
+  const leaveBalances = useMemo(() => {
+    if (!user || !quotas.length) return [];
+
     const used = getUsed(user.id);
 
-    const balances = quotas.map((quota) => {
+    return quotas.map((quota) => {
       const leaveType = getLeaveTypeById(quota.leaveTypeId);
       const usedAmount =
         used.find((u) => u.leaveTypeId === quota.leaveTypeId)?.usedQuota || 0;
@@ -49,9 +40,7 @@ export default function LeavePage() {
         percentUsed,
       };
     });
-
-    setLeaveBalances(balances);
-  }, [quotas]);
+  }, [user?.id, quotas.length, getUsed, getLeaveTypeById]);
 
   return (
     <DashboardLayout title="Leave Management">
