@@ -1,18 +1,36 @@
 import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuthStore } from "@/stores/auth-store";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Loader2, User, Mail, Building, Briefcase, Key, CalendarClock, IdCard } from "lucide-react";
+import {
+  Loader2,
+  User,
+  Mail,
+  Building,
+  Briefcase,
+  Key,
+  CalendarClock,
+  IdCard,
+} from "lucide-react";
 import DashboardLayout from "@/layouts/dashboard-layout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   Form,
@@ -25,8 +43,8 @@ import {
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { useUserScopedData } from "@/hooks/useUserScopedData";
 
-// Profile update schema
 const profileUpdateSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
@@ -35,22 +53,30 @@ const profileUpdateSchema = z.object({
   position: z.string().optional(),
 });
 
-// Password update schema
-const passwordUpdateSchema = z.object({
-  currentPassword: z.string().min(1, "Current password is required"),
-  newPassword: z.string().min(6, "New password must be at least 6 characters"),
-  confirmPassword: z.string().min(6, "Confirm password is required"),
-}).refine((data) => data.newPassword === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const passwordUpdateSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Current password is required"),
+    newPassword: z.string().min(6, "New password must be at least 6 characters"),
+    confirmPassword: z.string().min(6, "Confirm password is required"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("profile");
-  const { user } = useAuth();
   const { toast } = useToast();
+  const {user} = useUserScopedData();
+  const updateProfile = useAuthStore((s) => s.updateProfile);
+  const updatePassword = useAuthStore((s) => s.updatePassword);
 
-  // Profile update form
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isSavingPassword, setIsSavingPassword] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState("");
+
+
   const profileForm = useForm<z.infer<typeof profileUpdateSchema>>({
     resolver: zodResolver(profileUpdateSchema),
     defaultValues: {
@@ -62,7 +88,6 @@ export default function ProfilePage() {
     },
   });
 
-  // Password update form
   const passwordForm = useForm<z.infer<typeof passwordUpdateSchema>>({
     resolver: zodResolver(passwordUpdateSchema),
     defaultValues: {
@@ -72,66 +97,52 @@ export default function ProfilePage() {
     },
   });
 
-  // Update profile mutation
-  const updateProfileMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof profileUpdateSchema>) => {
-      const res = await apiRequest("PATCH", `/api/users/${user?.id}`, data);
-      return await res.json();
-    },
-    onSuccess: () => {
+  
+
+  const onProfileSubmit = (data: z.infer<typeof profileUpdateSchema>) => {
+    try {
+      setIsSavingProfile(true);
+      updateProfile(user.id, data);
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ["/api/user"] });
-    },
-    onError: (error: Error) => {
+      profileForm.reset();
+      setProfileError("sas");
+    } catch (error: any) {
+      setProfileError(error.message || "Failed to update password.");
       toast({
-        title: "Update failed",
-        description: error.message || "Failed to update profile. Please try again.",
+        title: "Profile Update failed",
+        description: error.message || "Failed to update profile.",
         variant: "destructive",
       });
-    },
-  });
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
 
-  // Update password mutation
-  const updatePasswordMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof passwordUpdateSchema>) => {
-      const res = await apiRequest("PATCH", `/api/users/${user?.id}/password`, {
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword,
-      });
-      return await res.json();
-    },
-    onSuccess: () => {
+  const onPasswordSubmit = (data: z.infer<typeof passwordUpdateSchema>) => {
+    try {
+      setIsSavingPassword(true);
+      updatePassword(user.id, data.currentPassword, data.newPassword);
       toast({
         title: "Password updated",
         description: "Your password has been updated successfully.",
       });
-      passwordForm.reset({
-        currentPassword: "",
-        newPassword: "",
-        confirmPassword: "",
-      });
-    },
-    onError: (error: Error) => {
+      passwordForm.reset();
+      setPasswordError("");
+    } catch (error: any) {
+      setPasswordError(error.message || "Failed to update password.");
       toast({
-        title: "Update failed",
-        description: error.message || "Failed to update password. Please try again.",
+        title: "Password Update failed",
+        description: error.message || "Failed to update password.",
         variant: "destructive",
       });
-    },
-  });
-
-  const onProfileSubmit = (data: z.infer<typeof profileUpdateSchema>) => {
-    updateProfileMutation.mutate(data);
+    } finally {
+      setIsSavingPassword(false);
+    }
   };
 
-  const onPasswordSubmit = (data: z.infer<typeof passwordUpdateSchema>) => {
-    updatePasswordMutation.mutate(data);
-  };
-
-  // Generate initials for avatar
   const getInitials = () => {
     const firstName = user?.firstName || "";
     const lastName = user?.lastName || "";
@@ -330,9 +341,9 @@ export default function ProfilePage() {
                         <Button
                           type="submit"
                           className="px-6 py-2 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white"
-                          disabled={updateProfileMutation.isPending}
+                          disabled={isSavingProfile}
                         >
-                          {updateProfileMutation.isPending ? (
+                          {isSavingProfile ? (
                             <>
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               Saving...
@@ -419,10 +430,10 @@ export default function ProfilePage() {
                         )}
                       />
                       
-                      {updatePasswordMutation.error && (
+                      {passwordError && (
                         <Alert variant="destructive">
                           <AlertDescription>
-                            {updatePasswordMutation.error.message || "An error occurred. Please try again."}
+                            {passwordError || "An error occurred. Please try again."}
                           </AlertDescription>
                         </Alert>
                       )}
@@ -431,9 +442,9 @@ export default function ProfilePage() {
                         <Button
                           type="submit"
                           className="px-6 py-2 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white"
-                          disabled={updatePasswordMutation.isPending}
+                          disabled={isSavingPassword}
                         >
-                          {updatePasswordMutation.isPending ? (
+                          {isSavingProfile ? (
                             <>
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                               Updating...

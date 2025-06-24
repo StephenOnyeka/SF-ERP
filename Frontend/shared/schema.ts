@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // Base schemas
 export const userSchema = z.object({
-  id: z.number().optional(),
+  id: z.string(),
   username: z.string().min(1, "Username is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   firstName: z.string().min(1, "First name is required"),
@@ -17,26 +17,26 @@ export const userSchema = z.object({
 });
 
 export const attendanceSchema = z.object({
-  id: z.number().optional(),
-  userId: z.number(),
+  id: z.string().optional(),
+  userId: z.string(),
   date: z.date().default(() => new Date()),
   checkInTime: z.string().optional(),
   checkOutTime: z.string().optional(),
-  status: z.enum(["present", "absent", "half-day"]).default("present"),
+  status: z.enum(["present", "leave", "absent", "half-day"]).default("present"),
   workingHours: z.string().optional(),
   notes: z.string().optional(),
 });
 
 export const leaveTypeSchema = z.object({
-  id: z.number().optional(),
+  id: z.string().optional(),
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   colorCode: z.string().optional(),
 });
 
 export const leaveQuotaSchema = z.object({
-  id: z.number().optional(),
-  userId: z.number(),
+  id: z.string().optional(),
+  userId: z.string(),
   leaveTypeId: z.number(),
   totalQuota: z.number().min(0),
   usedQuota: z.number().min(0).default(0),
@@ -44,8 +44,8 @@ export const leaveQuotaSchema = z.object({
 });
 
 export const leaveApplicationSchema = z.object({
-  id: z.number().optional(),
-  userId: z.number(),
+  id: z.string().optional(),
+  userId: z.string(),
   leaveTypeId: z.number(),
   startDate: z.date(),
   endDate: z.date(),
@@ -61,7 +61,7 @@ export const leaveApplicationSchema = z.object({
 });
 
 export const holidaySchema = z.object({
-  id: z.number().optional(),
+  id: z.string().optional(),
   name: z.string().min(1, "Name is required"),
   date: z.date(),
   description: z.string().optional(),
@@ -69,8 +69,8 @@ export const holidaySchema = z.object({
 });
 
 export const salarySchema = z.object({
-  id: z.number().optional(),
-  userId: z.number(),
+  id: z.string().optional(),
+  userId: z.string(),
   month: z.number().min(1).max(12),
   year: z.number(),
   baseSalary: z.number().min(0),

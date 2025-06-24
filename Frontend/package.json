@@ -4,9 +4,8 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "cross-env NODE_ENV=development tsx --tsconfig tsconfig.server.json server/index.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "start": "cross-env NODE_ENV=production node dist/index.js",
+    "dev": "vite",
+    "build": "tsc -b && vite build",
     "check": "tsc"
   },
   "dependencies": {
@@ -68,11 +67,13 @@
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "tw-animate-css": "^1.2.5",
+    "uuid": "^11.1.0",
     "vaul": "^1.1.2",
     "wouter": "^3.7.0",
     "ws": "^8.18.0",
     "zod": "^3.24.4",
-    "zod-validation-error": "^3.4.0"
+    "zod-validation-error": "^3.4.0",
+    "zustand": "^5.0.5"
   },
   "devDependencies": {
     "@replit/vite-plugin-cartographer": "^0.2.0",

@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   Table,
   TableBody,
@@ -34,110 +33,71 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
-
-import { format, subDays, parseISO } from "date-fns";
+import { format, subDays } from "date-fns";
+import { useAttendanceStore } from "@/stores/attendance-store";
+import { useUserScopedData } from "@/hooks/useUserScopedData";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function AttendanceTable() {
-  // State for filters
+    const { user, users } = useAuth();
+
   const [period, setPeriod] = useState("7");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 7;
 
-  // Calculate date range based on period
-  const endDate = new Date();
-  const startDate = subDays(endDate, parseInt(period));
+  const getRecordsInRange = useAttendanceStore((s) => s.getRecordsInRange);
 
-  // Format dates for query key to prevent unnecessary re-renders
+  const endDate = new Date();
+  const startDate = subDays(endDate, parseInt(period) - 1);
   const formattedStartDate = format(startDate, "yyyy-MM-dd");
   const formattedEndDate = format(endDate, "yyyy-MM-dd");
 
-  // Query attendance data with proper caching
-  const { data: attendanceData, isLoading } = useQuery<any[]>({
-    queryKey: ["attendance", formattedStartDate, formattedEndDate],
-    queryFn: async () => {
-      const response = await fetch(
-        `/api/attendance?startDate=${formattedStartDate}&endDate=${formattedEndDate}`
-      );
-      if (!response.ok) {
-        throw new Error("Failed to fetch attendance data");
-      }
-      return response.json();
-    },
-    staleTime: 5 * 60 * 1000, // Data stays fresh for 5 minutes
-    cacheTime: 30 * 60 * 1000, // Cache persists for 30 minutes
-  });
+  const attendanceData = (user?.role === "admin" || user?.role === "hr")
+    ? useAttendanceStore
+        .getState()
+        .attendanceRecords
+        .filter(record =>
+          new Date(record.date) >= startDate &&
+          new Date(record.date) <= endDate
+        )
+    : getRecordsInRange(user?.id!, formattedStartDate, formattedEndDate);
 
-  // Reset to first page when period changes
+
   useEffect(() => {
     setCurrentPage(1);
   }, [period]);
 
-  // Calculate pagination
   const totalItems = attendanceData?.length || 0;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
 
   const paginatedData = attendanceData
-    ? attendanceData.slice(
-        (currentPage - 1) * itemsPerPage,
-        currentPage * itemsPerPage
-      )
+    ? attendanceData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
     : [];
 
-  // Status badge color mapping
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "present":
-        return (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-            Present
-          </Badge>
-        );
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Present</Badge>;
       case "absent":
-        return (
-          <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-            Absent
-          </Badge>
-        );
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Absent</Badge>;
       case "half-day":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-            Half-day
-          </Badge>
-        );
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Half-day</Badge>;
       case "weekend":
-        return (
-          <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
-            Weekend
-          </Badge>
-        );
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Weekend</Badge>;
       case "holiday":
-        return (
-          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-            Holiday
-          </Badge>
-        );
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Holiday</Badge>;
       case "leave":
-        return (
-          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-            Leave
-          </Badge>
-        );
+        return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Leave</Badge>;
       default:
-        return (
-          <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
-            {status}
-          </Badge>
-        );
+        return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">{status}</Badge>;
     }
   };
 
-  // Format time for display
   const formatTime = (timeString: string | null) => {
     if (!timeString) return "--";
     return format(new Date(timeString), "h:mm a");
   };
 
-  // Format date for display
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "MMM dd, yyyy");
@@ -145,19 +105,30 @@ export default function AttendanceTable() {
       return dateString;
     }
   };
-
-  // Render pagination
+  const getUserFullName = (userId: string) => {
+    const u = users.find((u) => u.id === userId);
+    return u ? `${u.firstName} ${u.lastName}` : "Unknown";
+  };
   const renderPagination = () => {
     if (totalPages <= 1) return null;
+
+    let pages: number[] = [];
+    if (totalPages <= 3) {
+      pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    } else if (currentPage === 1) {
+      pages = [1, 2, 3];
+    } else if (currentPage === totalPages) {
+      pages = [totalPages - 2, totalPages - 1, totalPages];
+    } else {
+      pages = [currentPage - 1, currentPage, currentPage + 1];
+    }
 
     return (
       <Pagination>
         <PaginationContent>
           <PaginationItem>
-            <PaginationPrevious
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              isActive={currentPage > 1}
-            />
+            <PaginationPrevious onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} aria-disabled={currentPage <= 1} />
+
           </PaginationItem>
 
           {Array.from({ length: Math.min(totalPages, 3) }).map((_, index) => {
@@ -193,12 +164,8 @@ export default function AttendanceTable() {
           )}
 
           <PaginationItem>
-            <PaginationNext
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              isActive={currentPage < totalPages}
-            />
+            <PaginationNext onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} aria-disabled={currentPage >= totalPages} />
+
           </PaginationItem>
         </PaginationContent>
       </Pagination>
@@ -233,11 +200,10 @@ export default function AttendanceTable() {
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
+        {paginatedData.length === 0 ? (
+          <div className="text-center text-gray-500 py-8">
+            No attendance data available for this period.
+
           </div>
         ) : (
           <>
@@ -245,6 +211,7 @@ export default function AttendanceTable() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>User</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Check In</TableHead>
                     <TableHead>Check Out</TableHead>
@@ -255,20 +222,28 @@ export default function AttendanceTable() {
                 </TableHeader>
                 <TableBody>
                   {paginatedData.map((record) => (
-                    <TableRow key={record._id}>
-                      <TableCell>{formatDate(record.date)}</TableCell>
+                    <TableRow key={record.id}>
+                      {(user?.role === "admin" ||
+                        user?.role === "hr" ||
+                        user?.role === "employee") && (
+                        <TableCell>{getUserFullName(record.userId)}</TableCell>
+                      )}
                       <TableCell>
-                        {record.checkIn
-                          ? formatTime(record.checkIn.time)
+                        {formatDate(record.date.toString())}
+                      </TableCell>
+
+                      <TableCell>
+                        {record.checkInTime
+                          ? formatTime(record.checkInTime)
                           : "--"}
                       </TableCell>
                       <TableCell>
-                        {record.checkOut
-                          ? formatTime(record.checkOut.time)
+                        {record.checkOutTime
+                          ? formatTime(record.checkOutTime)
                           : "--"}
                       </TableCell>
                       <TableCell>{getStatusBadge(record.status)}</TableCell>
-                      <TableCell>{record.workHours || "--"}</TableCell>
+                      <TableCell>{record.workingHours || "--"}</TableCell>
                       <TableCell>{record.notes || "--"}</TableCell>
                     </TableRow>
                   ))}

@@ -2,10 +2,7 @@ import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { differenceInDays, addDays, format, parseISO } from "date-fns";
+import { differenceInDays, format } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,7 +11,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from "@/components/ui/card";
 import {
   Form,
@@ -35,6 +31,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useLeaveStore } from "@/stores/leave-store";
+import { useLeaveMetadataStore } from "@/stores/leave-metadata-store";
+import { useAuth } from "@/hooks/use-auth";
+import { useUserScopedData } from "@/hooks/useUserScopedData";
 
 // Define the form schema
 const formSchema = z.object({
@@ -43,23 +44,18 @@ const formSchema = z.object({
   endDate: z.string().min(1, { message: "End date is required" }),
   isFirstDayHalf: z.boolean().default(false),
   isLastDayHalf: z.boolean().default(false),
-  reason: z.string().min(3, { message: "Reason is required" }).max(500, { message: "Reason must be less than 500 characters" }),
+  reason: z.string().min(3, { message: "Reason is required" }).max(500),
 });
 
 export default function LeaveApplicationForm() {
+  const { user } = useUserScopedData();
   const { toast } = useToast();
   const [totalDays, setTotalDays] = useState(0);
-  
-  // Get leave types and quotas
-  const { data: leaveTypes, isLoading: isLoadingLeaveTypes } = useQuery<any[]>({
-    queryKey: ["/api/leave-types"],
-  });
-  
-  const { data: leaveQuotas, isLoading: isLoadingLeaveQuotas } = useQuery<any[]>({
-    queryKey: ["/api/leave-quotas"],
-  });
-  
-  // Setup form
+
+  const leaveTypes = useLeaveMetadataStore((s) => s.leaveTypes);
+  const leaveQuotas = useLeaveStore((s) => s.leaveQuotas);
+  const applyForLeave = useLeaveStore((s) => s.applyForLeave);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -71,117 +67,80 @@ export default function LeaveApplicationForm() {
       reason: "",
     },
   });
-  
+
   const { watch, setValue } = form;
   const startDate = watch("startDate");
   const endDate = watch("endDate");
   const isFirstDayHalf = watch("isFirstDayHalf");
   const isLastDayHalf = watch("isLastDayHalf");
-  
-  // Calculate total days when dates change
+
   useEffect(() => {
     if (startDate && endDate) {
       const start = new Date(startDate);
       const end = new Date(endDate);
-      
+
       if (start > end) {
         setValue("endDate", startDate);
         return;
       }
-      
-      let days = differenceInDays(end, start) + 1; // Including both start and end dates
-      
-      // Adjust for half days
+
+      let days = differenceInDays(end, start) + 1;
       if (isFirstDayHalf) days -= 0.5;
       if (isLastDayHalf) days -= 0.5;
-      
       setTotalDays(days);
     } else {
       setTotalDays(0);
     }
   }, [startDate, endDate, isFirstDayHalf, isLastDayHalf, setValue]);
-  
-  // Set minimum date for date inputs (today)
+
   const today = format(new Date(), "yyyy-MM-dd");
-  
-  // Find remaining leave quota for selected leave type
+
   const findRemainingQuota = (leaveTypeId: string) => {
-    if (!leaveQuotas) return 0;
-    
     const quota = leaveQuotas.find(
-      (q) => q.leaveTypeId === parseInt(leaveTypeId)
+      (q) => q.userId === user?.id && q.leaveTypeId === parseInt(leaveTypeId)
     );
-    
     return quota ? quota.totalQuota - quota.usedQuota : 0;
   };
-  
-  // Submit leave application
-  const applyLeaveMutation = useMutation({
-    mutationFn: async (formData: z.infer<typeof formSchema>) => {
-      const payload = {
-        leaveTypeId: parseInt(formData.leaveTypeId),
-        startDate: formData.startDate,
-        endDate: formData.endDate,
-        isFirstDayHalf: formData.isFirstDayHalf,
-        isLastDayHalf: formData.isLastDayHalf,
-        totalDays,
-        reason: formData.reason,
-      };
-      
-      const res = await apiRequest("POST", "/api/leave-applications", payload);
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/leave-applications"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/leave-quotas"] });
-      
-      toast({
-        title: "Leave application submitted",
-        description: "Your leave application has been submitted successfully",
-      });
-      
-      form.reset();
-      setTotalDays(0);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Failed to submit leave application",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-  
+
   const onSubmit = (formData: z.infer<typeof formSchema>) => {
-    const selectedLeaveTypeId = formData.leaveTypeId;
-    const remainingQuota = findRemainingQuota(selectedLeaveTypeId);
-    
-    if (totalDays > remainingQuota) {
+    const remaining = findRemainingQuota(formData.leaveTypeId);
+    if (totalDays > remaining) {
       toast({
         title: "Insufficient leave balance",
-        description: `You only have ${remainingQuota} days remaining for this leave type`,
+        description: `You only have ${remaining} days remaining for this leave type`,
         variant: "destructive",
       });
       return;
     }
-    
-    applyLeaveMutation.mutate(formData);
+
+    try {
+      applyForLeave(user!.id!, {
+        leaveTypeId: parseInt(formData.leaveTypeId),
+        startDate: new Date(formData.startDate),
+        endDate: new Date(formData.endDate),
+        isFirstDayHalf: formData.isFirstDayHalf,
+        isLastDayHalf: formData.isLastDayHalf,
+        reason: formData.reason,
+        totalDays,
+      },true);
+
+      toast({
+        title: "Leave application submitted",
+        description: "Your leave application has been submitted successfully",
+      });
+
+      form.reset();
+      setTotalDays(0);
+    } catch (e: any) {
+      toast({
+        title: "Failed to submit leave application",
+        description: e.message,
+        variant: "destructive",
+      });
+    }
   };
-  
-  if (isLoadingLeaveTypes || isLoadingLeaveQuotas) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Apply for Leave</CardTitle>
-          <CardDescription>Loading leave types and quotas...</CardDescription>
-        </CardHeader>
-        <CardContent className="flex justify-center py-10">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </CardContent>
-      </Card>
-    );
-  }
-  
+  // console.log(leaveTypes,"leave types")
+  // console.log(user,"this is the user")
   return (
     <Card>
       <CardHeader>
@@ -204,11 +163,11 @@ export default function LeaveApplicationForm() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {leaveTypes?.map((type) => {
-                        const remainingQuota = findRemainingQuota(type.id.toString());
+                      {leaveTypes.map((type) => {
+                        const remaining = findRemainingQuota(type.id.toString());
                         return (
                           <SelectItem key={type.id} value={type.id.toString()}>
-                            {type.name} ({remainingQuota} days left)
+                            {type.name} ({remaining} days left)
                           </SelectItem>
                         );
                       })}
@@ -218,7 +177,7 @@ export default function LeaveApplicationForm() {
                 </FormItem>
               )}
             />
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -227,17 +186,13 @@ export default function LeaveApplicationForm() {
                   <FormItem>
                     <FormLabel>From Date</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
-                        min={today}
-                        {...field}
-                      />
+                      <Input type="date" min={today} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="endDate"
@@ -245,18 +200,14 @@ export default function LeaveApplicationForm() {
                   <FormItem>
                     <FormLabel>To Date</FormLabel>
                     <FormControl>
-                      <Input
-                        type="date"
-                        min={startDate || today}
-                        {...field}
-                      />
+                      <Input type="date" min={startDate || today} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -266,7 +217,7 @@ export default function LeaveApplicationForm() {
                     <FormLabel>Half Day (First Day)</FormLabel>
                     <FormControl>
                       <RadioGroup
-                        onValueChange={(value) => field.onChange(value === "true")}
+                        onValueChange={(v) => field.onChange(v === "true")}
                         defaultValue={field.value ? "true" : "false"}
                         className="flex space-x-4"
                       >
@@ -284,7 +235,7 @@ export default function LeaveApplicationForm() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="isLastDayHalf"
@@ -293,7 +244,7 @@ export default function LeaveApplicationForm() {
                     <FormLabel>Half Day (Last Day)</FormLabel>
                     <FormControl>
                       <RadioGroup
-                        onValueChange={(value) => field.onChange(value === "true")}
+                        onValueChange={(v) => field.onChange(v === "true")}
                         defaultValue={field.value ? "true" : "false"}
                         className="flex space-x-4"
                       >
@@ -312,7 +263,7 @@ export default function LeaveApplicationForm() {
                 )}
               />
             </div>
-            
+
             <FormField
               control={form.control}
               name="reason"
@@ -331,21 +282,15 @@ export default function LeaveApplicationForm() {
                 </FormItem>
               )}
             />
-            
+
             <div className="flex items-center justify-between pt-2">
               <div>
                 <p className="text-sm text-gray-600">
                   Duration: <span className="font-medium">{totalDays} days</span>
                 </p>
               </div>
-              
-              <Button
-                type="submit"
-                disabled={applyLeaveMutation.isPending}
-              >
-                {applyLeaveMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
+
+              <Button type="submit">
                 Submit Application
               </Button>
             </div>

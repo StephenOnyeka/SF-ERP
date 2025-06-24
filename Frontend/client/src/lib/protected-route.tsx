@@ -1,7 +1,8 @@
-import { useAuth } from "@/hooks/use-auth";
 import { Loader2 } from "lucide-react";
 import { Redirect, Route } from "wouter";
 import { useEffect, useState } from "react";
+import { useAuthStore } from "@/stores/auth-store";
+import { useAuth } from "@/hooks/use-auth";
 
 export function ProtectedRoute({
   path,
@@ -10,27 +11,25 @@ export function ProtectedRoute({
   path: string;
   component: () => React.JSX.Element;
 }) {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
   const [isPageTransitioning, setIsPageTransitioning] = useState(false);
-  
+
   // Debug
   useEffect(() => {
-    console.log(`Protected route (${path}) check:`, { user, isLoading });
-  }, [user, isLoading, path]);
+    console.log(`Protected route (${path}) check:`, { user });
+  }, [user, path]);
 
   // Handle page transitions
   useEffect(() => {
-    if (!isLoading) {
-      setIsPageTransitioning(true);
-      const timer = setTimeout(() => {
-        setIsPageTransitioning(false);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [path, isLoading]);
+    setIsPageTransitioning(true);
+    const timer = setTimeout(() => {
+      setIsPageTransitioning(false);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [path]);
 
-  // Loading state
-  if (isLoading) {
+  // Loading state simulation (optional): add loading if needed
+  if (user === undefined) {
     return (
       <Route path={path}>
         <div className="flex items-center justify-center min-h-screen">
@@ -53,7 +52,11 @@ export function ProtectedRoute({
   // Authenticated state
   return (
     <Route path={path}>
-      <div className={`transition-opacity duration-300 ${isPageTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+      <div
+        className={`transition-opacity duration-300 ${
+          isPageTransitioning ? "opacity-0" : "opacity-100"
+        }`}
+      >
         <Component />
       </div>
     </Route>
