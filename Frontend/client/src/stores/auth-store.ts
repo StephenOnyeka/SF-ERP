@@ -1,19 +1,11 @@
+// auth-store.ts
 import { create } from "zustand";
-import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
-import { v4 as uuid } from "uuid"; // <-- Add this
+import { persist, createJSONStorage } from "zustand/middleware";
+import { v4 as uuid } from "uuid";
 import type { User, LoginData as BaseLoginData } from "../../../shared/schema";
 import { z } from "zod";
 import { useLeaveStore } from "@/stores/leave-store";
-
-const setStorage = (remember: boolean) =>
-  useAuthStore.persist.setOptions({
-    storage: createJSONStorage(() => storageType(remember)),
-  });
-
-const resetToDefaultStorage = () =>
-  useAuthStore.persist.setOptions({
-    storage: createJSONStorage(() => localStorage),
-  });
+import { useSessionStore } from "./session-auth-store";
 
 const registerSchema = z.object({
   username: z.string().min(1),
@@ -24,72 +16,23 @@ const registerSchema = z.object({
   role: z.enum(["admin", "hr", "employee"]).default("employee"),
 });
 export type RegisterData = z.infer<typeof registerSchema>;
+export type LoginData = BaseLoginData & { rememberMe: boolean };
 
-export type LoginData = BaseLoginData & {
-  rememberMe: boolean;
-};
-
-const seedUsers: Omit<User, "id" | "companyId" | "joinDate">[] = [
-  {
-    username: "admin",
-    password: "password123",
-    firstName: "Admin",
-    lastName: "User",
-    email: "admin@sforger.com",
-    role: "admin",
-    department: "Management",
-    position: "System Administrator",
-    profileImage: "https://i.pravatar.cc/150?u=admin",
-  },
-  {
-    username: "hr_manager",
-    password: "password123",
-    firstName: "Helen",
-    lastName: "Resource",
-    email: "hr@sforger.com",
-    role: "hr",
-    department: "Human Resources",
-    position: "HR Manager",
-    profileImage: "https://i.pravatar.cc/150?u=hr_manager",
-  },
-  {
-    username: "test_employee",
-    password: "password123",
-    firstName: "John",
-    lastName: "Doe",
-    email: "employee@sforger.com",
-    role: "employee",
-    department: "Engineering",
-    position: "Software Developer",
-    profileImage: "https://i.pravatar.cc/150?u=test_employee",
-  },
-];
+const seedUsers: Omit<User, "id" | "companyId" | "joinDate">[] = [ /* ... */ ];
 
 const generateInitialUsers = (): User[] =>
   seedUsers.map((user, index) => ({
     ...user,
-    id: uuid(), // <-- Now using UUID
+    id: uuid(),
     joinDate: new Date(),
     companyId: `SF-${String(index + 1).padStart(3, "0")}`,
   }));
 
-const storageType = (remember: boolean): StateStorage =>
-  remember ? localStorage : sessionStorage;
-
-interface AuthState {
-  user: User | null;
-  token: string | null;
+interface AuthStoreState {
   users: User[];
-  login: (data: LoginData) => Promise<User>;
-  logout: () => void;
   register: (data: RegisterData) => Promise<User>;
-  _repersist: () => void;
-  updateProfile: (
-    id: string,
-    updates: Partial<
-      Omit<User, "id" | "username" | "companyId" | "joinDate" | "role">
-    >
-  ) => void;
+  login: (data: LoginData) => Promise<User>;
+  updateProfile: (id: string, updates: Partial<User>) => void;
   updatePassword: (
     id: string,
     currentPassword: string,
@@ -97,46 +40,15 @@ interface AuthState {
   ) => void;
 }
 
-export const useAuthStore = create<AuthState>()(
+export const useAuthStore = create<AuthStoreState>()(
   persist(
     (set, get) => ({
-      user: null,
-      token: null,
       users: generateInitialUsers(),
 
-      login: async ({ username, password, rememberMe }: LoginData) => {
-        setStorage(rememberMe);
-
-        const foundUser = get().users.find(
-          (u) => u.username === username && u.password === password
-        );
-        if (!foundUser) throw new Error("Invalid username or password");
-
-        const mockToken = btoa(
-          JSON.stringify({ sub: foundUser.id, role: foundUser.role })
-        );
-        set({ user: foundUser, token: mockToken });
-
-        return foundUser;
-      },
-
-      logout: () => {
-        set({ user: null, token: null });
-        resetToDefaultStorage();
-      },
-
-      register: async (data: RegisterData) => {
-        useAuthStore.persist.setOptions({
-          storage: createJSONStorage(() => localStorage),
-        });
-
+      register: async (data) => {
         const { users } = get();
-        if (users.some((u) => u.username === data.username)) {
-          throw new Error("Username already exists");
-        }
-        if (users.some((u) => u.email === data.email)) {
-          throw new Error("Email already exists");
-        }
+        if (users.some((u) => u.username === data.username)) throw new Error("Username exists");
+        if (users.some((u) => u.email === data.email)) throw new Error("Email exists");
 
         const newUser: User = {
           ...data,
@@ -145,57 +57,47 @@ export const useAuthStore = create<AuthState>()(
           companyId: `SF-${String(users.length + 1).padStart(3, "0")}`,
         };
 
-        const mockToken = btoa(
-          JSON.stringify({ sub: newUser.id, role: newUser.role })
-        );
-
-        set({ users: [...users, newUser], user: newUser, token: mockToken });
-
-        // leave quotas for this user
         useLeaveStore.getState().createDefaultQuotasForUser(newUser.id);
 
+        set({ users: [...users, newUser] });
         return newUser;
       },
 
-      _repersist: () => {
-        useAuthStore.persist.rehydrate();
+      login: async ({ username, password }) => {
+        const foundUser = get().users.find(
+          (u) => u.username === username && u.password === password
+        );
+        if (!foundUser) throw new Error("Invalid credentials");
+
+        const token = btoa(JSON.stringify({ sub: foundUser.id, role: foundUser.role }));
+        useSessionStore.getState().setSession(foundUser, token);
+
+        return foundUser;
       },
+
       updateProfile: (id, updates) => {
         const { users } = get();
         const updatedUsers = users.map((u) =>
           u.id === id ? { ...u, ...updates } : u
         );
-        const updatedUser = updatedUsers.find((u) => u.id === id) || null;
-        set({ users: updatedUsers, user: updatedUser });
+        set({ users: updatedUsers });
       },
 
       updatePassword: (id, currentPassword, newPassword) => {
         const { users } = get();
         const user = users.find((u) => u.id === id);
-        if (!user || user.password !== currentPassword) {
-          throw new Error("Current password is incorrect");
-        }
-
-        const updatedUsers = users.map((u) =>
-          u.id === id ? { ...u, password: newPassword } : u
-        );
-        set({ users: updatedUsers });
+        if (!user || user.password !== currentPassword)
+          throw new Error("Incorrect password");
+        set({
+          users: users.map((u) =>
+            u.id === id ? { ...u, password: newPassword } : u
+          ),
+        });
       },
     }),
     {
       name: "sforger-auth-storage",
       storage: createJSONStorage(() => localStorage),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          const sessionIsLocalStorage =
-            window.localStorage.getItem("sforger-auth-storage") !== null;
-          useAuthStore.persist.setOptions({
-            storage: createJSONStorage(() =>
-              storageType(sessionIsLocalStorage)
-            ),
-          });
-        }
-      },
     }
   )
 );
