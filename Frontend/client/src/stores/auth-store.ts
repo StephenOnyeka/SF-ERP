@@ -60,6 +60,10 @@ export const useAuthStore = create<AuthStoreState>()(
         useLeaveStore.getState().createDefaultQuotasForUser(newUser.id);
 
         set({ users: [...users, newUser] });
+        const token = btoa(JSON.stringify({ sub: newUser.id, role: newUser.role }));
+
+        useSessionStore.getState().setSession(newUser,token);
+
         return newUser;
       },
 

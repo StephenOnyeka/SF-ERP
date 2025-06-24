@@ -23,8 +23,7 @@ router.get("/", auth, isHR, async (req, res) => {
       .populate("employee", "employeeId user")
       .populate("employee.user", "fullName email")
       .populate("verifiedBy", "fullName")
-      .sort({ date: -1 })
-      .lean();
+      .sort({ date: -1 });
 
     // Map fields for frontend compatibility
     const mapped = attendance.map((a) => ({
@@ -52,22 +51,15 @@ router.get("/my-attendance", auth, async (req, res) => {
     let query = { employee: employee._id };
 
     if (startDate && endDate) {
-      // Parse as UTC midnight
-      const start = new Date(startDate + "T00:00:00.000Z");
-      const end = new Date(endDate + "T23:59:59.999Z");
       query.date = {
-        $gte: start,
-        $lte: end,
+        $gte: new Date(startDate),
+        $lte: new Date(endDate),
       };
-      console.log("Attendance query:", query);
     }
 
     const attendance = await Attendance.find(query)
       .populate("verifiedBy", "fullName")
-      .sort({ date: -1 })
-      .lean();
-
-    console.log("Attendance results:", attendance.length, attendance.map(a => a.date));
+      .sort({ date: -1 });
 
     // Map fields for frontend compatibility
     const mapped = attendance.map((a) => ({
@@ -77,7 +69,6 @@ router.get("/my-attendance", auth, async (req, res) => {
       id: a._id,
     }));
 
-    console.log("Mapped attendance to send:", Array.isArray(mapped), mapped);
     res.json(mapped);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
@@ -123,14 +114,7 @@ router.post("/check-in", auth, async (req, res) => {
 
     const attendance = new Attendance(attendanceData);
     await attendance.save();
-    // Map fields for frontend compatibility
-    const mapped = {
-      ...attendance.toObject(),
-      checkInTime: attendance.checkIn?.time,
-      checkOutTime: attendance.checkOut?.time,
-      id: attendance._id,
-    };
-    res.status(201).json(mapped);
+    res.status(201).json(attendance);
   } catch (err) {
     console.error("Check-in error:", err);
     res.status(500).json({ message: "Server error", error: err.message });
@@ -175,14 +159,7 @@ router.post("/check-out", auth, async (req, res) => {
     }
 
     await attendance.save();
-    // Map fields for frontend compatibility
-    const mapped = {
-      ...attendance.toObject(),
-      checkInTime: attendance.checkIn?.time,
-      checkOutTime: attendance.checkOut?.time,
-      id: attendance._id,
-    };
-    res.json(mapped);
+    res.json(attendance);
   } catch (err) {
     res.status(500).json({ message: "Server error", error: err.message });
   }
