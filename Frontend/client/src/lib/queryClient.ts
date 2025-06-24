@@ -1,5 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
-// import { API_BASE_URL } from "@/config/api";
+import { API_BASE_URL } from "@/config/api";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -31,9 +31,8 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // Always use relative URLs; Vite proxy will handle routing
-  // const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
-  const fullUrl = url;
+  // Prepend API_BASE_URL if the URL doesn't start with http
+  const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
   const token = localStorage.getItem("token");
   const headers: Record<string, string> = {
     ...(data ? { "Content-Type": "application/json" } : {}),
@@ -61,9 +60,8 @@ export const getQueryFn: <T>(options: {
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
     const url = queryKey[0] as string;
-    // Always use relative URLs; Vite proxy will handle routing
-    // const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
-    const fullUrl = url;
+    // Prepend API_BASE_URL if the URL doesn't start with http
+    const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
     const token = localStorage.getItem("token");
     const headers: Record<string, string> = {
       "Accept": "application/json",
