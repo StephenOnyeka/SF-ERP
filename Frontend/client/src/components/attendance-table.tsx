@@ -33,13 +33,13 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/use-auth";
 import { format, subDays } from "date-fns";
 import { useAttendanceStore } from "@/stores/attendance-store";
 import { useUserScopedData } from "@/hooks/useUserScopedData";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function AttendanceTable() {
-  const { user } = useUserScopedData();
+    const { user, users } = useAuth();
   const [period, setPeriod] = useState("7");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 7;
@@ -51,7 +51,15 @@ export default function AttendanceTable() {
   const formattedStartDate = format(startDate, "yyyy-MM-dd");
   const formattedEndDate = format(endDate, "yyyy-MM-dd");
 
-  const attendanceData = getRecordsInRange(user.id!, formattedStartDate, formattedEndDate);
+  const attendanceData = (user?.role === "admin" || user?.role === "hr")
+    ? useAttendanceStore
+        .getState()
+        .attendanceRecords
+        .filter(record =>
+          new Date(record.date) >= startDate &&
+          new Date(record.date) <= endDate
+        )
+    : getRecordsInRange(user?.id!, formattedStartDate, formattedEndDate);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -95,7 +103,10 @@ export default function AttendanceTable() {
       return dateString;
     }
   };
-
+  const getUserFullName = (userId: string) => {
+    const u = users.find((u) => u.id === userId);
+    return u ? `${u.firstName} ${u.lastName}` : "Unknown";
+  };
   const renderPagination = () => {
     if (totalPages <= 1) return null;
 
@@ -186,6 +197,7 @@ export default function AttendanceTable() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>User</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Check In</TableHead>
                     <TableHead>Check Out</TableHead>
@@ -197,6 +209,9 @@ export default function AttendanceTable() {
                 <TableBody>
                   {paginatedData.map((record) => (
                     <TableRow key={record.id}>
+                       {(user?.role === "admin" || user?.role === "hr") && (
+                        <TableCell>{getUserFullName(record.userId)}</TableCell>
+                      )}
                       <TableCell>{formatDate(record.date.toString())}</TableCell>
                       <TableCell>{record.checkInTime ? formatTime(record.checkInTime) : "--"}</TableCell>
                       <TableCell>{record.checkOutTime ? formatTime(record.checkOutTime) : "--"}</TableCell>
