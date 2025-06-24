@@ -6,10 +6,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { useAttendanceStore } from "@/stores/attendance-store";
 import { useSalaryStore } from "@/stores/salary-store";
 import { useLeaveStore } from "@/stores/leave-store";
-import { useUserScopedData } from "@/hooks/useUserScopedData";
 
 export default function ActivityFeed() {
-  const { user, attendance, leaves, quotas } = useUserScopedData() ?? {};
+  const { user, users } = useAuth();
   const { attendanceRecords } = useAttendanceStore();
   const { salaryRecords } = useSalaryStore();
   const { leaveApplications } = useLeaveStore();
@@ -17,27 +16,33 @@ export default function ActivityFeed() {
   const isLoading = !user;
 
   const activities: {
-  id: string;
-  type: string;
-  title: string;
-  timestamp: Date | string;
-  icon: React.JSX.Element;
-  iconBg: string;
-  iconColor: string;
-}[] = [];
+    id: string;
+    type: string;
+    title: string;
+    timestamp: Date | string;
+    icon: React.JSX.Element;
+    iconBg: string;
+    iconColor: string;
+  }[] = [];
 
-  // Filter attendance based on user role
-  const userAttendance =
-    user?.role === "admin" || user?.role === "hr"
-      ? attendanceRecords
-      : attendanceRecords.filter((a) => a.userId === user?.id);
+  const getUserName = (userId: string) => {
+    const u = users.find((u) => u.id === userId);
+    return u ? `${u.firstName} ${u.lastName}` : "Unknown User";
+  };
 
-  userAttendance.slice(0, 3).forEach((attendance) => {
+  // --- Attendance ---
+  const scopedAttendance =
+    user?.role === "admin" ? attendanceRecords : attendanceRecords.filter((a) => a.userId === user?.id);
+  console.log("Scoped Attendance Records:", scopedAttendance);
+  scopedAttendance.forEach((attendance) => {
     if (attendance.checkInTime) {
       activities.push({
         id: `attendance-in-${attendance.id}`,
         type: "attendance",
-        title: `You checked in at ${formatTime(attendance.checkInTime)}`,
+        title:
+          user?.role === "admin"
+            ? `${getUserName(attendance.userId)} checked in at ${formatTime(attendance.checkInTime)}`
+            : `You checked in at ${formatTime(attendance.checkInTime)}`,
         timestamp: attendance.date,
         icon: <Clock className="h-4 w-4" />,
         iconBg: "bg-primary-100",
@@ -49,7 +54,10 @@ export default function ActivityFeed() {
       activities.push({
         id: `attendance-out-${attendance.id}`,
         type: "attendance",
-        title: `You checked out at ${formatTime(attendance.checkOutTime)}`,
+        title:
+          user?.role === "admin"
+            ? `${getUserName(attendance.userId)} checked out at ${formatTime(attendance.checkOutTime)}`
+            : `You checked out at ${formatTime(attendance.checkOutTime)}`,
         timestamp: attendance.date,
         icon: <Clock className="h-4 w-4" />,
         iconBg: "bg-primary-100",
@@ -58,16 +66,17 @@ export default function ActivityFeed() {
     }
   });
 
+  // --- Leave ---
   leaveApplications
-    .filter((l) => l.userId === user?.id)
-    .slice(0, 3)
+    .filter((l) => user?.role === "admin" || l.userId === user?.id)
     .forEach((leave) => {
       activities.push({
         id: `leave-${leave.id}`,
         type: "leave",
-        title: `Your leave request has been ${
-          leave.status === "pending" ? "submitted" : leave.status
-        }`,
+        title:
+          user?.role === "admin"
+            ? `${getUserName(leave.userId)}'s leave was ${leave.status}`
+            : `Your leave request has been ${leave.status}`,
         timestamp: leave.appliedAt,
         icon: <Calendar className="h-4 w-4" />,
         iconBg:
@@ -85,32 +94,29 @@ export default function ActivityFeed() {
       });
     });
 
+  // --- Salary (optional: admin could also see all salary statements) ---
   salaryRecords
     .filter((s) => s.userId === user?.id)
-    .slice(0, 2)
     .forEach((salary) => {
       activities.push({
         id: `salary-${salary.id}`,
         type: "salary",
-        title: `Your ${getMonthName(
-          salary.month
-        )} salary statement is available`,
-        timestamp: new Date().toISOString(),
+        title: `Your ${getMonthName(salary.month)} salary statement is available`,
+        timestamp: salary.createdAt,
         icon: <FileText className="h-4 w-4" />,
         iconBg: "bg-blue-100",
         iconColor: "text-blue-600",
       });
     });
 
-  activities.sort(
-    (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-  );
+  // Sort by most recent
+  activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+  console.log("Activities:", activities);
   function formatTime(timeString: string) {
     if (!timeString) return "";
     try {
-      const date =
-        typeof timeString === "string" ? parseISO(timeString) : timeString;
+      const date = typeof timeString === "string" ? parseISO(timeString) : timeString;
       return format(date, "h:mm a");
     } catch {
       return timeString;
@@ -127,21 +133,16 @@ export default function ActivityFeed() {
     try {
       const date = parseISO(timestamp);
       const now = new Date();
-      const diffInDays = Math.floor(
-        (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
-      );
-
+      const diffInDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
       if (diffInDays === 0) return "Today";
       if (diffInDays === 1) return "Yesterday";
       if (diffInDays < 7) return `${diffInDays} days ago`;
-      console.log("caught it in try",format(date, "MMM d, yyyy"))
       return format(date, "MMM d, yyyy");
     } catch {
-      console.log("caught it in catch",timestamp)
       return timestamp;
     }
   }
-  console.log(activities,"error activities caught")
+
   return (
     <Card>
       <CardHeader className="border-b px-6 py-3">
@@ -162,7 +163,7 @@ export default function ActivityFeed() {
           </div>
         ) : activities.length > 0 ? (
           <ul className="divide-y divide-gray-200">
-            {activities.slice(0, 5).map((activity) => (
+            {activities.map((activity) => (
               <li key={activity.id} className="py-3 flex items-start">
                 <span
                   className={`flex-shrink-0 h-8 w-8 rounded-full ${activity.iconBg} flex items-center justify-center mr-3`}
@@ -172,7 +173,11 @@ export default function ActivityFeed() {
                 <div>
                   <p className="text-sm text-gray-800">{activity.title}</p>
                   <p className="text-xs text-gray-500">
-                    {formatRelativeTime(typeof activity.timestamp === "string" ? activity.timestamp : activity.timestamp.toISOString())}
+                    {formatRelativeTime(
+                      typeof activity.timestamp === "string"
+                        ? activity.timestamp
+                        : activity.timestamp.toISOString()
+                    )}
                   </p>
                 </div>
               </li>
