@@ -97,7 +97,7 @@ export default function LeaveApplicationForm() {
 
   const findRemainingQuota = (leaveTypeId: string) => {
     const quota = leaveQuotas.find(
-      (q) => q.userId === user?.id && q.leaveTypeId === parseInt(leaveTypeId)
+      (q) => q.userId === user?.id && q.leaveTypeId === leaveTypeId
     );
     return quota ? quota.totalQuota - quota.usedQuota : 0;
   };
@@ -114,15 +114,19 @@ export default function LeaveApplicationForm() {
     }
 
     try {
-      applyForLeave(user!.id!, {
-        leaveTypeId: parseInt(formData.leaveTypeId),
-        startDate: new Date(formData.startDate),
-        endDate: new Date(formData.endDate),
-        isFirstDayHalf: formData.isFirstDayHalf,
-        isLastDayHalf: formData.isLastDayHalf,
-        reason: formData.reason,
-        totalDays,
-      },true);
+      applyForLeave(
+        user!.id!,
+        {
+          leaveTypeId: formData.leaveTypeId,
+          startDate: new Date(formData.startDate),
+          endDate: new Date(formData.endDate),
+          isFirstDayHalf: formData.isFirstDayHalf,
+          isLastDayHalf: formData.isLastDayHalf,
+          reason: formData.reason,
+          totalDays,
+        },
+        true
+      );
 
       toast({
         title: "Leave application submitted",
@@ -164,7 +168,9 @@ export default function LeaveApplicationForm() {
                     </FormControl>
                     <SelectContent>
                       {leaveTypes.map((type) => {
-                        const remaining = findRemainingQuota(type.id.toString());
+                        const remaining = findRemainingQuota(
+                          type.id.toString()
+                        );
                         return (
                           <SelectItem key={type.id} value={type.id.toString()}>
                             {type.name} ({remaining} days left)
@@ -223,11 +229,15 @@ export default function LeaveApplicationForm() {
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="false" id="firstHalfNo" />
-                          <label htmlFor="firstHalfNo" className="text-sm">No</label>
+                          <label htmlFor="firstHalfNo" className="text-sm">
+                            No
+                          </label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="true" id="firstHalfYes" />
-                          <label htmlFor="firstHalfYes" className="text-sm">Yes</label>
+                          <label htmlFor="firstHalfYes" className="text-sm">
+                            Yes
+                          </label>
                         </div>
                       </RadioGroup>
                     </FormControl>
@@ -250,11 +260,15 @@ export default function LeaveApplicationForm() {
                       >
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="false" id="lastHalfNo" />
-                          <label htmlFor="lastHalfNo" className="text-sm">No</label>
+                          <label htmlFor="lastHalfNo" className="text-sm">
+                            No
+                          </label>
                         </div>
                         <div className="flex items-center space-x-2">
                           <RadioGroupItem value="true" id="lastHalfYes" />
-                          <label htmlFor="lastHalfYes" className="text-sm">Yes</label>
+                          <label htmlFor="lastHalfYes" className="text-sm">
+                            Yes
+                          </label>
                         </div>
                       </RadioGroup>
                     </FormControl>
@@ -286,13 +300,12 @@ export default function LeaveApplicationForm() {
             <div className="flex items-center justify-between pt-2">
               <div>
                 <p className="text-sm text-gray-600">
-                  Duration: <span className="font-medium">{totalDays} days</span>
+                  Duration:{" "}
+                  <span className="font-medium">{totalDays} days</span>
                 </p>
               </div>
 
-              <Button type="submit">
-                Submit Application
-              </Button>
+              <Button type="submit">Submit Application</Button>
             </div>
           </form>
         </Form>

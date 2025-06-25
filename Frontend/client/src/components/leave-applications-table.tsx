@@ -28,7 +28,7 @@ export default function LeaveApplicationsTable() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
 
-  const {leaves: leaveApplications} = useUserScopedData()
+  const { leaves: leaveApplications } = useUserScopedData();
   const leaveTypes = useLeaveMetadataStore((state) => state.leaveTypes);
 
   const totalItems = leaveApplications.length;
@@ -66,7 +66,7 @@ export default function LeaveApplicationsTable() {
     }
   };
 
-  const getLeaveTypeName = (leaveTypeId: number) => {
+  const getLeaveTypeName = (leaveTypeId: string) => {
     const leaveType = leaveTypes.find((type) => type.id === leaveTypeId);
     return leaveType ? leaveType.name : "Unknown";
   };

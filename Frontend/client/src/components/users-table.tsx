@@ -65,7 +65,7 @@ import { adminApi } from "@/lib/api";
 import { toast } from "sonner";
 
 interface User {
-  _id: string;
+  id: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -177,7 +177,7 @@ export default function UsersTable() {
 
   // Handlers
   const handleDeleteUser = (user: User) => {
-    setDeleteUserId(user._id);
+    setDeleteUserId(user.id);
     setIsDeleteDialogOpen(true);
   };
 
@@ -187,22 +187,31 @@ export default function UsersTable() {
     setIsRoleDialogOpen(true);
   };
 
-  const confirmDeleteUser = () => {
-    if (deleteUserId) {
-      handleDeleteUser({
-        _id: deleteUserId,
-        firstName: "",
-        lastName: "",
-        email: "",
-        role: "",
-        isActive: true,
-      });
-    }
-  };
+  const roleUpdateMutation = useMutation({
+    mutationFn: async ({
+      userId,
+      newRole,
+    }: {
+      userId: string;
+      newRole: string;
+    }) => handleRoleUpdate(userId, newRole),
+  });
+  const deleteUserMutation = useMutation({
+    mutationFn: async (userId: string) => adminApi.deleteUser(userId),
+    onSuccess: fetchUsers,
+  });
 
   const confirmChangeRole = () => {
     if (selectedUser && newRole) {
-      handleRoleUpdate(selectedUser._id, newRole);
+      roleUpdateMutation.mutate({ userId: selectedUser.id, newRole });
+      setIsRoleDialogOpen(false);
+    }
+  };
+
+  const confirmDeleteUser = () => {
+    if (deleteUserId) {
+      deleteUserMutation.mutate(deleteUserId);
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -211,7 +220,7 @@ export default function UsersTable() {
     if (!currentUser) return false;
 
     // Prevent deleting your own account
-    if (currentUser._id === targetUser._id) return false;
+    if (currentUser.id === targetUser.id) return false;
 
     // Admin can delete anyone
     if (currentUser.role === "admin") return true;
@@ -291,7 +300,7 @@ export default function UsersTable() {
               <TableBody>
                 {paginatedUsers.length > 0 ? (
                   paginatedUsers.map((user) => (
-                    <TableRow key={user._id}>
+                    <TableRow key={user.id}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
                           <div>{`${user.firstName} ${user.lastName}`}</div>
@@ -455,10 +464,10 @@ export default function UsersTable() {
               disabled={
                 !newRole ||
                 newRole === selectedUser?.role ||
-                handleRoleUpdate.isPending
+                roleUpdateMutation.isPending
               }
             >
-              {handleRoleUpdate.isPending ? "Updating..." : "Save Changes"}
+              {roleUpdateMutation.isPending ? "Updating..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -492,9 +501,9 @@ export default function UsersTable() {
             <Button
               variant="destructive"
               onClick={confirmDeleteUser}
-              disabled={handleDeleteUser.isPending}
+              disabled={deleteUserMutation.isPending}
             >
-              {handleDeleteUser.isPending ? "Deleting..." : "Delete User"}
+              {deleteUserMutation.isPending ? "Deleting..." : "Delete User"}
             </Button>
           </DialogFooter>
         </DialogContent>

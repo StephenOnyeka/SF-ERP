@@ -20,7 +20,7 @@ interface LeaveStoreState {
   getLeaveQuotasForUser: (userId: string) => LeaveQuota[];
   getUsedQuotaByTypeForUser: (
     userId: string
-  ) => { leaveTypeId: number; usedQuota: number }[];
+  ) => { leaveTypeId: string; usedQuota: number }[];
 }
 
 export const useLeaveStore = create<LeaveStoreState>()(
@@ -41,9 +41,9 @@ export const useLeaveStore = create<LeaveStoreState>()(
 
       createDefaultQuotasForUser: (userId: string) => {
         const defaultQuotaTemplates = [
-          { leaveTypeId: 1, totalQuota: 20 },
-          { leaveTypeId: 2, totalQuota: 10 },
-          { leaveTypeId: 3, totalQuota: 5 },
+          { leaveTypeId: "1", totalQuota: 20 },
+          { leaveTypeId: "2", totalQuota: 10 },
+          { leaveTypeId: "3", totalQuota: 5 },
         ];
 
         const currentYear = new Date().getFullYear();
@@ -123,7 +123,7 @@ export const useLeaveStore = create<LeaveStoreState>()(
         const userApps = get().leaveApplications.filter(
           (app) => app.userId === userId && app.status === "approved"
         );
-        const usage: Record<number, number> = {};
+        const usage: Record<string, number> = {};
 
         userApps.forEach((app) => {
           if (!usage[app.leaveTypeId]) usage[app.leaveTypeId] = 0;
@@ -131,7 +131,7 @@ export const useLeaveStore = create<LeaveStoreState>()(
         });
 
         return Object.entries(usage).map(([leaveTypeId, usedQuota]) => ({
-          leaveTypeId: parseInt(leaveTypeId),
+          leaveTypeId: leaveTypeId,
           usedQuota,
         }));
       },

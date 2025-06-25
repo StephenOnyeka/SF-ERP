@@ -25,12 +25,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import {
   Form,
@@ -56,7 +51,9 @@ const profileUpdateSchema = z.object({
 const passwordUpdateSchema = z
   .object({
     currentPassword: z.string().min(1, "Current password is required"),
-    newPassword: z.string().min(6, "New password must be at least 6 characters"),
+    newPassword: z
+      .string()
+      .min(6, "New password must be at least 6 characters"),
     confirmPassword: z.string().min(6, "Confirm password is required"),
   })
   .refine((data) => data.newPassword === data.confirmPassword, {
@@ -67,7 +64,7 @@ const passwordUpdateSchema = z
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("profile");
   const { toast } = useToast();
-  const {user} = useUserScopedData();
+  const { user } = useUserScopedData();
   const updateProfile = useAuthStore((s) => s.updateProfile);
   const updatePassword = useAuthStore((s) => s.updatePassword);
 
@@ -75,7 +72,6 @@ export default function ProfilePage() {
   const [isSavingPassword, setIsSavingPassword] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState("");
-
 
   const profileForm = useForm<z.infer<typeof profileUpdateSchema>>({
     resolver: zodResolver(profileUpdateSchema),
@@ -97,9 +93,8 @@ export default function ProfilePage() {
     },
   });
 
-  
-
   const onProfileSubmit = (data: z.infer<typeof profileUpdateSchema>) => {
+    if (!user) return;
     try {
       setIsSavingProfile(true);
       updateProfile(user.id, data);
@@ -122,6 +117,7 @@ export default function ProfilePage() {
   };
 
   const onPasswordSubmit = (data: z.infer<typeof passwordUpdateSchema>) => {
+    if (!user) return;
     try {
       setIsSavingPassword(true);
       updatePassword(user.id, data.currentPassword, data.newPassword);
@@ -168,7 +164,9 @@ export default function ProfilePage() {
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center">
                 <Avatar className="h-24 w-24 mb-4 bg-primary-100 text-primary-700">
-                  <AvatarFallback className="text-2xl">{getInitials()}</AvatarFallback>
+                  <AvatarFallback className="text-2xl">
+                    {getInitials()}
+                  </AvatarFallback>
                 </Avatar>
                 <h2 className="text-2xl font-bold text-gray-900 mb-1">
                   {user.firstName} {user.lastName}
@@ -177,38 +175,46 @@ export default function ProfilePage() {
                 <p className="text-sm text-gray-500 mb-4">
                   {user.department} {user.position ? `- ${user.position}` : ""}
                 </p>
-                
+
                 <div className="w-full">
                   <Separator className="my-4" />
-                  
+
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <IdCard className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-600 font-medium">Company ID:</span>
+                      <span className="text-sm text-gray-600 font-medium">
+                        Company ID:
+                      </span>
                       <Badge variant="outline" className="font-mono ml-auto">
                         {user.companyId}
                       </Badge>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <Mail className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-600 font-medium">Email:</span>
+                      <span className="text-sm text-gray-600 font-medium">
+                        Email:
+                      </span>
                       <span className="text-sm text-gray-600 ml-auto truncate max-w-[140px]">
                         {user.email}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-600 font-medium">Username:</span>
+                      <span className="text-sm text-gray-600 font-medium">
+                        Username:
+                      </span>
                       <span className="text-sm text-gray-600 ml-auto">
                         {user.username}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center gap-2">
                       <CalendarClock className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm text-gray-600 font-medium">Join Date:</span>
+                      <span className="text-sm text-gray-600 font-medium">
+                        Join Date:
+                      </span>
                       <span className="text-sm text-gray-600 ml-auto">
                         {new Date(user.joinDate).toLocaleDateString()}
                       </span>
@@ -228,7 +234,11 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="profile" value={activeTab} onValueChange={setActiveTab}>
+              <Tabs
+                defaultValue="profile"
+                value={activeTab}
+                onValueChange={setActiveTab}
+              >
                 <TabsList className="grid w-full grid-cols-2 mb-6">
                   <TabsTrigger value="profile">
                     <User className="h-4 w-4 mr-2" />
@@ -239,11 +249,14 @@ export default function ProfilePage() {
                     Password
                   </TabsTrigger>
                 </TabsList>
-                
+
                 {/* Profile Tab */}
                 <TabsContent value="profile">
                   <Form {...profileForm}>
-                    <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+                    <form
+                      onSubmit={profileForm.handleSubmit(onProfileSubmit)}
+                      className="space-y-4"
+                    >
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                           control={profileForm.control}
@@ -254,14 +267,18 @@ export default function ProfilePage() {
                               <FormControl>
                                 <div className="relative">
                                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                                  <Input placeholder="John" className="pl-10" {...field} />
+                                  <Input
+                                    placeholder="John"
+                                    className="pl-10"
+                                    {...field}
+                                  />
                                 </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={profileForm.control}
                           name="lastName"
@@ -271,7 +288,11 @@ export default function ProfilePage() {
                               <FormControl>
                                 <div className="relative">
                                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                                  <Input placeholder="Doe" className="pl-10" {...field} />
+                                  <Input
+                                    placeholder="Doe"
+                                    className="pl-10"
+                                    {...field}
+                                  />
                                 </div>
                               </FormControl>
                               <FormMessage />
@@ -279,7 +300,7 @@ export default function ProfilePage() {
                           )}
                         />
                       </div>
-                      
+
                       <FormField
                         control={profileForm.control}
                         name="email"
@@ -289,14 +310,18 @@ export default function ProfilePage() {
                             <FormControl>
                               <div className="relative">
                                 <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                                <Input placeholder="john.doe@example.com" className="pl-10" {...field} />
+                                <Input
+                                  placeholder="john.doe@example.com"
+                                  className="pl-10"
+                                  {...field}
+                                />
                               </div>
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField
                           control={profileForm.control}
@@ -307,14 +332,18 @@ export default function ProfilePage() {
                               <FormControl>
                                 <div className="relative">
                                   <Building className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                                  <Input placeholder="HR, Engineering, etc." className="pl-10" {...field} />
+                                  <Input
+                                    placeholder="HR, Engineering, etc."
+                                    className="pl-10"
+                                    {...field}
+                                  />
                                 </div>
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-                        
+
                         <FormField
                           control={profileForm.control}
                           name="position"
@@ -324,7 +353,11 @@ export default function ProfilePage() {
                               <FormControl>
                                 <div className="relative">
                                   <Briefcase className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                                  <Input placeholder="Manager, Developer, etc." className="pl-10" {...field} />
+                                  <Input
+                                    placeholder="Manager, Developer, etc."
+                                    className="pl-10"
+                                    {...field}
+                                  />
                                 </div>
                               </FormControl>
                               <FormMessage />
@@ -332,12 +365,12 @@ export default function ProfilePage() {
                           )}
                         />
                       </div>
-                      
+
                       <div className="flex justify-between items-center pt-3">
                         <FormDescription>
                           Note: Your Company ID and Username cannot be changed.
                         </FormDescription>
-                        
+
                         <Button
                           type="submit"
                           className="px-6 py-2 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white"
@@ -356,11 +389,14 @@ export default function ProfilePage() {
                     </form>
                   </Form>
                 </TabsContent>
-                
+
                 {/* Password Tab */}
                 <TabsContent value="password">
                   <Form {...passwordForm}>
-                    <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                    <form
+                      onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}
+                      className="space-y-4"
+                    >
                       <FormField
                         control={passwordForm.control}
                         name="currentPassword"
@@ -370,11 +406,11 @@ export default function ProfilePage() {
                             <FormControl>
                               <div className="relative">
                                 <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                                <Input 
-                                  type="password" 
-                                  placeholder="Enter your current password" 
-                                  className="pl-10" 
-                                  {...field} 
+                                <Input
+                                  type="password"
+                                  placeholder="Enter your current password"
+                                  className="pl-10"
+                                  {...field}
                                 />
                               </div>
                             </FormControl>
@@ -382,7 +418,7 @@ export default function ProfilePage() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={passwordForm.control}
                         name="newPassword"
@@ -392,11 +428,11 @@ export default function ProfilePage() {
                             <FormControl>
                               <div className="relative">
                                 <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                                <Input 
-                                  type="password" 
-                                  placeholder="Enter your new password" 
-                                  className="pl-10" 
-                                  {...field} 
+                                <Input
+                                  type="password"
+                                  placeholder="Enter your new password"
+                                  className="pl-10"
+                                  {...field}
                                 />
                               </div>
                             </FormControl>
@@ -407,7 +443,7 @@ export default function ProfilePage() {
                           </FormItem>
                         )}
                       />
-                      
+
                       <FormField
                         control={passwordForm.control}
                         name="confirmPassword"
@@ -417,11 +453,11 @@ export default function ProfilePage() {
                             <FormControl>
                               <div className="relative">
                                 <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
-                                <Input 
-                                  type="password" 
-                                  placeholder="Confirm your new password" 
-                                  className="pl-10" 
-                                  {...field} 
+                                <Input
+                                  type="password"
+                                  placeholder="Confirm your new password"
+                                  className="pl-10"
+                                  {...field}
                                 />
                               </div>
                             </FormControl>
@@ -429,15 +465,16 @@ export default function ProfilePage() {
                           </FormItem>
                         )}
                       />
-                      
+
                       {passwordError && (
                         <Alert variant="destructive">
                           <AlertDescription>
-                            {passwordError || "An error occurred. Please try again."}
+                            {passwordError ||
+                              "An error occurred. Please try again."}
                           </AlertDescription>
                         </Alert>
                       )}
-                      
+
                       <div className="flex justify-end pt-3">
                         <Button
                           type="submit"

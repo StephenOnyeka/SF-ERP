@@ -104,7 +104,9 @@ export const syncService = {
         quota,
         { headers: getAuthHeaders() }
       );
-      leaveQuotaStorage.updateLeaveQuota(quota.id, response.data);
+      if (quota.id) {
+        leaveQuotaStorage.updateLeaveQuota(quota.id, response.data);
+      }
       return response.data;
     } catch (error) {
       console.error('Error pushing leave quota:', error);
