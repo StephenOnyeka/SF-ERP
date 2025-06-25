@@ -1,7 +1,13 @@
 // session-auth-store.ts
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist, createJSONStorage, StateStorage } from "zustand/middleware";
 import type { User } from "../../../shared/schema";
+
+let storageBackend: StateStorage = sessionStorage;
+
+export const setSessionStorageType = (remember: boolean) => {
+  storageBackend = remember ? localStorage : sessionStorage;
+};
 
 interface SessionState {
   user: User | null;
@@ -20,7 +26,7 @@ export const useSessionStore = create<SessionState>()(
     }),
     {
       name: "sforger-session-storage",
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => storageBackend),
     }
   )
 );
