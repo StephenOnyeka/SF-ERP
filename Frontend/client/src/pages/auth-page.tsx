@@ -97,7 +97,6 @@ export default function AuthPage() {
   });
 
   const handleLogin = async (data: LoginFormData) => {
-    console.log("Sasa")
 
     setIsLoading(true);
     setLoginError(null);
@@ -111,7 +110,6 @@ export default function AuthPage() {
   };
 
   const handleRegister = async (data: RegisterFormData) => {
-    console.log("Sasa")
     setIsLoading(true);
     setRegisterError(null);
     try {
