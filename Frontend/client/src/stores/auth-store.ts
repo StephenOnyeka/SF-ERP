@@ -5,7 +5,7 @@ import { v4 as uuid } from "uuid";
 import type { User, LoginData as BaseLoginData } from "../../../shared/schema";
 import { z } from "zod";
 import { useLeaveStore } from "@/stores/leave-store";
-import { useSessionStore } from "./session-auth-store";
+import { setSessionStorageType, useSessionStore } from "./session-auth-store";
 
 const registerSchema = z.object({
   username: z.string().min(1),
@@ -67,11 +67,13 @@ export const useAuthStore = create<AuthStoreState>()(
         return newUser;
       },
 
-      login: async ({ username, password }) => {
+      login: async ({ username, password,rememberMe }) => {
         const foundUser = get().users.find(
           (u) => u.username === username && u.password === password
         );
         if (!foundUser) throw new Error("Invalid credentials");
+        
+        setSessionStorageType(rememberMe)
 
         const token = btoa(JSON.stringify({ sub: foundUser.id, role: foundUser.role }));
         useSessionStore.getState().setSession(foundUser, token);
