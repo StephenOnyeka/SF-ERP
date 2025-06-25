@@ -400,7 +400,7 @@ export default function AuthPage() {
                                     id="remember-me"
                                     checked={field.value}
                                     onCheckedChange={field.onChange}
-                                    className="data-[state=checked]:bg-primary-600"
+                                    className=""
                                     />
                                     </FormControl>
                                   <label
