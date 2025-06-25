@@ -1,35 +1,32 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { startOfMonth, endOfMonth, format } from "date-fns";
 import { useAttendanceStore } from "@/stores/attendance-store";
 import { useAuth } from "@/hooks/use-auth";
+import { User, Attendance } from "@shared/schema";
 
-export default function AttendanceStats() {
-  const { user } = useAuth();
-  const attendanceRecords = useAttendanceStore((state) => state.attendanceRecords);
-
+export default function AttendanceStats({
+  user,
+  records,
+}: {
+  user: User;
+  records: Attendance[];
+}) {
   const today = new Date();
   const startDate = startOfMonth(today);
   const endDate = endOfMonth(today);
 
-  const attendanceData = attendanceRecords.filter((record) => {
+  const attendanceData = records.filter((record) => {
     const date = new Date(record.date);
-    return (
-      record.userId === user?.id &&
-      date >= startDate &&
-      date <= endDate
-    );
+    return record.userId === user?.id && date >= startDate && date <= endDate;
   });
 
   const calculateStats = () => {
     const totalWorkingDays = 22;
-    const presentDays = attendanceData.filter((a) => a.status === "present").length;
+    const presentDays = attendanceData.filter(
+      (a) => a.status === "present"
+    ).length;
     const leaveDays = attendanceData.filter((a) => a.status === "leave").length;
     const lateDays = attendanceData.filter((a) => {
       if (!a.checkInTime) return false;
@@ -51,8 +48,10 @@ export default function AttendanceStats() {
       }
     });
 
-    const avgHoursPerDay = presentDays > 0 ? Math.floor(totalMinutes / presentDays / 60) : 0;
-    const avgMinutesPerDay = presentDays > 0 ? Math.floor((totalMinutes / presentDays) % 60) : 0;
+    const avgHoursPerDay =
+      presentDays > 0 ? Math.floor(totalMinutes / presentDays / 60) : 0;
+    const avgMinutesPerDay =
+      presentDays > 0 ? Math.floor((totalMinutes / presentDays) % 60) : 0;
 
     const attendanceRatio = Math.round((presentDays / totalWorkingDays) * 100);
 
@@ -71,7 +70,7 @@ export default function AttendanceStats() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Monthly Overview - {format(today, "MMMM yyyy")}</CardTitle>
+        <CardTitle> {user.username} Monthly Overview - {format(today, "MMMM yyyy")}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
@@ -121,8 +120,13 @@ export default function AttendanceStats() {
         </div>
 
         <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Attendance Ratio</h4>
-          <Progress value={stats?.attendanceRatio || 0} className="h-2.5 bg-gray-200 mb-1" />
+          <h4 className="text-sm font-medium text-gray-700 mb-2">
+            Attendance Ratio
+          </h4>
+          <Progress
+            value={stats?.attendanceRatio || 0}
+            className="h-2.5 bg-gray-200 mb-1"
+          />
           <div className="flex text-xs justify-between">
             <span className="text-gray-500">
               Present: {stats?.attendanceRatio || 0}%
