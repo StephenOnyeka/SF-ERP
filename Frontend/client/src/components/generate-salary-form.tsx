@@ -2,9 +2,8 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useSalaryStore } from "@/stores/salary-store";
 
 import {
   Dialog,
@@ -33,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
 
 const formSchema = z.object({
   userId: z.string().min(1, { message: "Employee is required" }),
@@ -56,12 +56,10 @@ export default function GenerateSalaryForm({
   selectedYear,
 }: GenerateSalaryFormProps) {
   const { toast } = useToast();
-  
-  // Fetch employees
-  const { data: users, isLoading: isLoadingUsers } = useQuery<any[]>({
-    queryKey: ["/api/users"],
-  });
-  
+  const addSalaryRecord = useSalaryStore((s) => s.addSalaryRecord);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { users } = useAuth();
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -72,62 +70,60 @@ export default function GenerateSalaryForm({
       notes: "",
     },
   });
-  
-  // Watch form values to calculate net salary
+
   const baseSalary = parseInt(form.watch("baseSalary") || "0");
   const deductions = parseInt(form.watch("deductions") || "0");
   const bonus = parseInt(form.watch("bonus") || "0");
   const netSalary = baseSalary - deductions + bonus;
-  
-  // Generate salary mutation
-  const generateSalaryMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
-      const payload = {
-        userId: parseInt(data.userId),
+
+  const onSubmit = (data: z.infer<typeof formSchema>) => {
+    setIsSubmitting(true);
+    try {
+      addSalaryRecord({
+        userId: data.userId,
         month: selectedMonth,
         year: selectedYear,
         baseSalary: parseInt(data.baseSalary),
         deductions: parseInt(data.deductions || "0"),
         bonus: parseInt(data.bonus || "0"),
-        netSalary: parseInt(data.baseSalary) - parseInt(data.deductions || "0") + parseInt(data.bonus || "0"),
+        netSalary,
         paymentStatus: "pending",
-        notes: data.notes,
-      };
-      
-      const res = await apiRequest("POST", "/api/salary", payload);
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/salary"] });
+        notes: data.notes ?? "",
+      });
+
       toast({
-        title: "Salary generated",
-        description: "Salary record has been created successfully",
+        title: "Salary Generated",
+        description: "Salary record successfully created",
       });
       onClose();
-    },
-    onError: (error: Error) => {
+    } catch (err: any) {
       toast({
-        title: "Failed to generate salary",
-        description: error.message,
+        title: "Error Generating Salary",
+        description: err.message,
         variant: "destructive",
       });
-    },
-  });
-  
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    generateSalaryMutation.mutate(data);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-  
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
           <DialogTitle>Generate Salary</DialogTitle>
           <DialogDescription>
-            Create a new salary record for {new Date(selectedYear, selectedMonth - 1).toLocaleString('default', { month: 'long' })} {selectedYear}
+            For{" "}
+            {new Date(selectedYear, selectedMonth - 1).toLocaleString(
+              "default",
+              {
+                month: "long",
+              }
+            )}{" "}
+            {selectedYear}
           </DialogDescription>
         </DialogHeader>
-        
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -143,24 +139,18 @@ export default function GenerateSalaryForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {isLoadingUsers ? (
-                        <div className="flex justify-center p-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        </div>
-                      ) : (
-                        users?.map((user) => (
-                          <SelectItem key={user.id} value={user.id.toString()}>
-                            {user.firstName} {user.lastName} ({user.position})
-                          </SelectItem>
-                        ))
-                      )}
+                      {users?.map((user) => (
+                        <SelectItem key={user.id} value={user.username}>
+                          {user.firstName} {user.lastName} ({user.position})
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="baseSalary"
@@ -174,7 +164,7 @@ export default function GenerateSalaryForm({
                 </FormItem>
               )}
             />
-            
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -189,7 +179,7 @@ export default function GenerateSalaryForm({
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="bonus"
@@ -204,7 +194,7 @@ export default function GenerateSalaryForm({
                 )}
               />
             </div>
-            
+
             <div className="bg-gray-50 p-3 rounded border">
               <div className="flex justify-between items-center">
                 <span className="font-medium">Net Salary:</span>
@@ -213,7 +203,7 @@ export default function GenerateSalaryForm({
                 </span>
               </div>
             </div>
-            
+
             <FormField
               control={form.control}
               name="notes"
@@ -227,22 +217,15 @@ export default function GenerateSalaryForm({
                 </FormItem>
               )}
             />
-            
+
             <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={onClose}
-              >
+              <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
-              <Button 
-                type="submit"
-                disabled={generateSalaryMutation.isPending}
-              >
-                {generateSalaryMutation.isPending ? (
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : null}
+                )}
                 Generate Salary
               </Button>
             </DialogFooter>
