@@ -13,8 +13,7 @@ export type NewSalaryData = Omit<ExtendedSalary, 'id' | 'paymentDate' | 'created
 
 const getPreviousMonth = () => {
   const date = new Date();
-  date.setMonth(date.getMonth() - 1);
-  return { month: date.getMonth() + 1, year: date.getFullYear() };
+  return { month: 6, year: date.getFullYear() };
 };
 
 // Generate seeded salary data (optional)
@@ -23,7 +22,7 @@ const generateInitialSalaryData = (): ExtendedSalary[] => {
   return [
     {
       id: uuid(),
-      userId: "test_employee", // use UUID string if your users have UUIDs
+      userId: "test_employee",
       month,
       year,
       baseSalary: 5000,
