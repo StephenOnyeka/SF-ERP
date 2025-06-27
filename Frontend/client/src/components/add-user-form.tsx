@@ -1,9 +1,6 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
 import {
@@ -12,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from "@/components/ui/card";
 import {
   Form,
@@ -32,6 +28,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { useAuthStore } from "@/stores/auth-store";
+import type { RegisterData } from "@/stores/auth-store";
 
 const formSchema = z.object({
   username: z.string().min(3, { message: "Username must be at least 3 characters" }),
@@ -39,15 +37,16 @@ const formSchema = z.object({
   firstName: z.string().min(1, { message: "First name is required" }),
   lastName: z.string().min(1, { message: "Last name is required" }),
   email: z.string().email({ message: "Invalid email address" }),
-  role: z.string().min(1, { message: "Role is required" }),
+  role: z.enum(["admin", "hr", "employee"]),
   department: z.string().optional(),
   position: z.string().optional(),
 });
 
 export default function AddUserForm() {
   const { toast } = useToast();
-  
-  const form = useForm<z.infer<typeof formSchema>>({
+  const register = useAuthStore((state) => state.adminAddNewUser);
+
+  const form = useForm<RegisterData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       username: "",
@@ -60,43 +59,24 @@ export default function AddUserForm() {
       position: "",
     },
   });
-  
-  // Create user mutation
-  const createUserMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
-      const res = await apiRequest("POST", "/api/register", data);
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/users"] });
+
+  const onSubmit = async (data: RegisterData) => {
+    try {
+      await register(data);
       toast({
         title: "User created",
         description: "New user has been created successfully",
       });
-      form.reset({
-        username: "",
-        password: "",
-        firstName: "",
-        lastName: "",
-        email: "",
-        role: "employee",
-        department: "",
-        position: "",
-      });
-    },
-    onError: (error: Error) => {
+      form.reset();
+    } catch (err: any) {
       toast({
         title: "Failed to create user",
-        description: error.message,
+        description: err.message || "An error occurred",
         variant: "destructive",
       });
-    },
-  });
-  
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    createUserMutation.mutate(data);
+    }
   };
-  
+
   return (
     <Card>
       <CardHeader>
@@ -121,7 +101,7 @@ export default function AddUserForm() {
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="password"
@@ -135,7 +115,7 @@ export default function AddUserForm() {
                 </FormItem>
               )}
             />
-            
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -150,7 +130,7 @@ export default function AddUserForm() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="lastName"
@@ -165,7 +145,7 @@ export default function AddUserForm() {
                 )}
               />
             </div>
-            
+
             <FormField
               control={form.control}
               name="email"
@@ -173,17 +153,13 @@ export default function AddUserForm() {
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input
-                      type="email"
-                      placeholder="john.smith@example.com"
-                      {...field}
-                    />
+                    <Input type="email" placeholder="john.smith@example.com" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="role"
@@ -206,7 +182,7 @@ export default function AddUserForm() {
                 </FormItem>
               )}
             />
-            
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -221,7 +197,7 @@ export default function AddUserForm() {
                   </FormItem>
                 )}
               />
-              
+
               <FormField
                 control={form.control}
                 name="position"
@@ -236,15 +212,15 @@ export default function AddUserForm() {
                 )}
               />
             </div>
-            
+
             <Button
               type="submit"
               className="w-full"
-              disabled={createUserMutation.isPending}
+              disabled={form.formState.isSubmitting}
             >
-              {createUserMutation.isPending ? (
+              {form.formState.isSubmitting && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
+              )}
               Create User
             </Button>
           </form>
