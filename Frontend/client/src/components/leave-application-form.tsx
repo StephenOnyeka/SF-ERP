@@ -125,7 +125,7 @@ export default function LeaveApplicationForm() {
           reason: formData.reason,
           totalDays,
         },
-        true
+        user?.role === "hr" || user?.role === "admin"
       );
 
       toast({
