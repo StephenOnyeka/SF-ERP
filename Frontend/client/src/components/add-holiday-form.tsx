@@ -1,10 +1,12 @@
-import { useState } from "react";
+// components/forms/AddHolidayForm.tsx
+
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useToast } from "@/hooks/use-toast";
+import { useHolidayStore } from "@/stores/holiday-store";
+import { v4 as uuid } from "uuid";
+
 
 import {
   Card,
@@ -23,11 +25,14 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Calendar } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Calendar as CalendarIcon, Loader2 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { Holiday } from "@shared/schema";
 
 const formSchema = z.object({
   name: z.string().min(1, { message: "Holiday name is required" }),
@@ -35,56 +40,60 @@ const formSchema = z.object({
     required_error: "Please select a date",
   }),
   description: z.string().optional(),
+  type: z.enum(["national", "company"], {
+    required_error: "Holiday type is required",
+  }).default("national"),
 });
 
 export default function AddHolidayForm() {
+  const { holidays, setHolidays } = useHolidayStore();
   const { toast } = useToast();
-  
+  const [loading, setLoading] = useState(false);
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       description: "",
+      type: "national", // default type
     },
   });
-  
-  // Create holiday mutation
-  const createHolidayMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof formSchema>) => {
-      const res = await apiRequest("POST", "/api/holidays", data);
-      return await res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/holidays"] });
+
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    try {
+      setLoading(true);
+      const newHoliday: Holiday = {
+        id: uuid(), // simple unique ID
+        name: data.name,
+        date: data.date,
+        type: data.type, // default type or extend the form to choose
+        description: data.description || "",
+      };
+
+      setHolidays([...holidays, newHoliday]);
+
       toast({
         title: "Holiday added",
         description: "New holiday has been added to the calendar",
       });
-      form.reset({
-        name: "",
-        description: "",
-      });
-    },
-    onError: (error: Error) => {
+
+      form.reset({ name: "", description: "" });
+    } catch (err: any) {
       toast({
         title: "Failed to add holiday",
-        description: error.message,
+        description: err?.message || "An error occurred",
         variant: "destructive",
       });
-    },
-  });
-  
-  const onSubmit = (data: z.infer<typeof formSchema>) => {
-    createHolidayMutation.mutate(data);
+    } finally {
+      setLoading(false);
+    }
   };
-  
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Add Holiday</CardTitle>
-        <CardDescription>
-          Add official holidays to the company calendar
-        </CardDescription>
+        <CardDescription>Add official holidays to the company calendar</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -102,7 +111,28 @@ export default function AddHolidayForm() {
                 </FormItem>
               )}
             />
-            
+
+            <FormField
+              control={form.control}
+              name="type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Holiday Type</FormLabel>
+                  <FormControl>
+                    <select
+                      className="w-full p-2 border rounded"
+                      value={field.value}
+                      onChange={(e) => field.onChange(e.target.value)}
+                    >
+                      <option value="national">National Holiday</option>
+                      <option value="company">Company Holiday</option>
+                    </select>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="date"
@@ -114,22 +144,15 @@ export default function AddHolidayForm() {
                       <FormControl>
                         <Button
                           variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
+                          className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                         >
-                          {field.value ? (
-                            format(field.value, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                          <Calendar className="ml-auto h-4 w-4 opacity-50" />
+                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
+                      <Calendar
                         mode="single"
                         selected={field.value}
                         onSelect={field.onChange}
@@ -141,7 +164,7 @@ export default function AddHolidayForm() {
                 </FormItem>
               )}
             />
-            
+
             <FormField
               control={form.control}
               name="description"
@@ -149,21 +172,15 @@ export default function AddHolidayForm() {
                 <FormItem>
                   <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
-                    <Input placeholder="Description of the holiday" {...field} />
+                    <Input placeholder="Optional holiday description" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={createHolidayMutation.isPending}
-            >
-              {createHolidayMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Add Holiday
             </Button>
           </form>
