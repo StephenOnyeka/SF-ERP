@@ -9,6 +9,7 @@ import AddHolidayForm from "@/components/add-holiday-form";
 import ManageLeaveApplications from "@/components/manage-leave-applications";
 import { adminApi } from "@/lib/api";
 import { toast } from "sonner";
+import HolidayTable from "@/components/holidays-table";
 
 export default function AdminPage() {
   const { user } = useAuth();
@@ -91,7 +92,7 @@ export default function AdminPage() {
         <TabsContent value="holidays">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <UsersTable />
+              <HolidayTable />
             </div>
             <div>
               <AddHolidayForm />
