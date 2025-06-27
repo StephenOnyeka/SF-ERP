@@ -29,7 +29,7 @@ export default function HolidaysList() {
       <CardContent className="p-4">
         <ul className="divide-y divide-gray-200">
           {holidays.map((holiday) => {
-            const holidayDate = parseISO(holiday.date);
+            const holidayDate = parseISO(holiday.date.toISOString());
             const day = format(holidayDate, "d");
             const month = format(holidayDate, "MMM");
             const weekday = format(holidayDate, "EEEE");
