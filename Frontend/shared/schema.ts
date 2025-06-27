@@ -17,7 +17,7 @@ export const userSchema = z.object({
 });
 
 export const attendanceSchema = z.object({
-  id: z.string().optional(),
+  id: z.string(),
   userId: z.string(),
   date: z.date().default(() => new Date()),
   checkInTime: z.string().optional(),
@@ -28,14 +28,14 @@ export const attendanceSchema = z.object({
 });
 
 export const leaveTypeSchema = z.object({
-  id: z.string().optional(),
+  id: z.string(),
   name: z.string().min(1, "Name is required"),
   description: z.string().optional(),
   colorCode: z.string().optional(),
 });
 
 export const leaveQuotaSchema = z.object({
-  id: z.string().optional(),
+  id: z.string(),
   userId: z.string(),
   leaveTypeId: z.string(), // changed from number to string
   totalQuota: z.number().min(0),
@@ -44,7 +44,7 @@ export const leaveQuotaSchema = z.object({
 });
 
 export const leaveApplicationSchema = z.object({
-  id: z.string().optional(),
+  id: z.string(),
   userId: z.string(),
   leaveTypeId: z.string(), // changed from number to string
   startDate: z.date(),
@@ -61,7 +61,7 @@ export const leaveApplicationSchema = z.object({
 });
 
 export const holidaySchema = z.object({
-  id: z.string().optional(),
+  id: z.string(),
   name: z.string().min(1, "Name is required"),
   date: z.date(),
   description: z.string().optional(),
