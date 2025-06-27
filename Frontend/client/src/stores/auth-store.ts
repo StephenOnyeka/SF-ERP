@@ -14,11 +14,14 @@ const registerSchema = z.object({
   lastName: z.string().min(1),
   email: z.string().email(),
   role: z.enum(["admin", "hr", "employee"]).default("employee"),
+  department: z.string().optional(),
+  position: z.string().optional(),
 });
 export type RegisterData = z.infer<typeof registerSchema>;
 export type LoginData = BaseLoginData & { rememberMe: boolean };
 
-const seedUsers: Omit<User, "id" | "companyId" | "joinDate">[] = [ /* ... */ ];
+const seedUsers: Omit<User, "id" | "companyId" | "joinDate">[] = [
+];
 
 const generateInitialUsers = (): User[] =>
   seedUsers.map((user, index) => ({
@@ -30,6 +33,7 @@ const generateInitialUsers = (): User[] =>
 
 interface AuthStoreState {
   users: User[];
+  adminAddNewUser: (data: RegisterData) => Promise<User>;
   register: (data: RegisterData) => Promise<User>;
   login: (data: LoginData) => Promise<User>;
   updateProfile: (id: string, updates: Partial<User>) => void;
@@ -38,17 +42,39 @@ interface AuthStoreState {
     currentPassword: string,
     newPassword: string
   ) => void;
+  fetchUsers: () => void;
+  updateUser: (userId: string, updates: Partial<User>) => Promise<void>;
+  deleteUser: (userId: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthStoreState>()(
   persist(
     (set, get) => ({
       users: generateInitialUsers(),
+      adminAddNewUser: async (data) => {
+        const { users } = get();
+        if (users.some((u) => u.username === data.username))
+          throw new Error("Username exists");
+        if (users.some((u) => u.email === data.email))
+          throw new Error("Email exists");
 
+        const newUser: User = {
+          ...data,
+          id: uuid(),
+          joinDate: new Date(),
+          companyId: `SF-${String(users.length + 1).padStart(3, "0")}`,
+        };
+
+        useLeaveStore.getState().createDefaultQuotasForUser(newUser.id);
+
+        return newUser;
+      },   
       register: async (data) => {
         const { users } = get();
-        if (users.some((u) => u.username === data.username)) throw new Error("Username exists");
-        if (users.some((u) => u.email === data.email)) throw new Error("Email exists");
+        if (users.some((u) => u.username === data.username))
+          throw new Error("Username exists");
+        if (users.some((u) => u.email === data.email))
+          throw new Error("Email exists");
 
         const newUser: User = {
           ...data,
@@ -60,22 +86,26 @@ export const useAuthStore = create<AuthStoreState>()(
         useLeaveStore.getState().createDefaultQuotasForUser(newUser.id);
 
         set({ users: [...users, newUser] });
-        const token = btoa(JSON.stringify({ sub: newUser.id, role: newUser.role }));
+        const token = btoa(
+          JSON.stringify({ sub: newUser.id, role: newUser.role })
+        );
 
-        useSessionStore.getState().setSession(newUser,token);
+        useSessionStore.getState().setSession(newUser, token);
 
         return newUser;
       },
 
-      login: async ({ username, password,rememberMe }) => {
+      login: async ({ username, password, rememberMe }) => {
         const foundUser = get().users.find(
           (u) => u.username === username && u.password === password
         );
         if (!foundUser) throw new Error("Invalid credentials");
-        
-        setSessionStorageType(rememberMe)
 
-        const token = btoa(JSON.stringify({ sub: foundUser.id, role: foundUser.role }));
+        setSessionStorageType(rememberMe);
+
+        const token = btoa(
+          JSON.stringify({ sub: foundUser.id, role: foundUser.role })
+        );
         useSessionStore.getState().setSession(foundUser, token);
 
         return foundUser;
@@ -99,6 +129,25 @@ export const useAuthStore = create<AuthStoreState>()(
             u.id === id ? { ...u, password: newPassword } : u
           ),
         });
+      },
+      fetchUsers: () => {
+        const users = useAuthStore.getState().users;
+        set({ users});
+      },
+
+      updateUser: async (userId, updates) => {
+        const auth = useAuthStore.getState();
+        await auth.updateProfile(userId, updates);
+        get().fetchUsers(); // refresh users after update
+      },
+
+      deleteUser: async (userId) => {
+        const auth = useAuthStore.getState();
+        const allUsers = auth.users;
+        const filtered = allUsers.filter((u) => u.id !== userId);
+        auth.updateProfile(userId, {}); // no-op to trigger persistence
+        auth["users"] = filtered; // directly override users
+        set({ users: filtered });
       },
     }),
     {
