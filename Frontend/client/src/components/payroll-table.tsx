@@ -39,6 +39,7 @@ export default function PayrollTable() {
   const filteredSalaries = salaryRecords.filter(
     (salary) => salary.month === selectedMonth && salary.year === selectedYear
   );
+
   console.log("filterd salaries",filteredSalaries,salaryRecords)
 
   const months = [

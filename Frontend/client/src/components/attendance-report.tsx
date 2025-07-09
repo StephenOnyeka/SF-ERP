@@ -1,225 +1,276 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { format, subDays, startOfMonth, endOfMonth } from "date-fns";
+// app/components/attendance-report.tsx
+
+import {
+  Chart as ChartJS,
+  BarElement,
+  CategoryScale,
+  LinearScale,
+  Tooltip,
+  Legend,
+} from "chart.js";
+import { Bar } from "react-chartjs-2";
+
+import { useState, useMemo } from "react";
+import {
+  subDays,
+  startOfMonth,
+  endOfMonth,
+  format,
+  isWithinInterval,
+  parseISO,
+  addDays,
+  isSameDay,
+  differenceInMinutes,
+} from "date-fns";
+
 import {
   Card,
-  CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
+  CardContent,
 } from "@/components/ui/card";
+
 import {
   Table,
-  TableBody,
-  TableCell,
-  TableHead,
   TableHeader,
   TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
 } from "@/components/ui/table";
+
 import {
   Select,
-  SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@/components/ui/select";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
-import { DownloadCloud, BarChart2 } from "lucide-react";
+import { DownloadCloud } from "lucide-react";
+
+import { useAuth } from "@/hooks/use-auth";
+import { useAttendanceStore } from "@/stores/attendance-store";
+
+ChartJS.register(BarElement, CategoryScale, LinearScale, Tooltip, Legend);
+
+const LATE_THRESHOLD_MINUTES = 9 * 60 + 15; // 9:15 AM
+const HALF_DAY_MINUTES = 240; // 4 hours
 
 export default function AttendanceReport() {
-  // State for filters
-  const [period, setPeriod] = useState("month");
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  
-  // Calculate date range based on period
-  const today = new Date();
-  let startDate, endDate;
-  
-  switch (period) {
-    case "week":
-      startDate = subDays(today, 7);
-      endDate = today;
-      break;
-    case "month":
-      startDate = startOfMonth(today);
-      endDate = endOfMonth(today);
-      break;
-    case "quarter":
-      startDate = subDays(today, 90);
-      endDate = today;
-      break;
-    default:
-      startDate = startOfMonth(today);
-      endDate = endOfMonth(today);
-  }
-  
-  // Query users data
-  const { data: users, isLoading: isLoadingUsers } = useQuery<any[]>({
-    queryKey: ["/api/users"],
-  });
-  
-  // Format dates for API
-  const formattedStartDate = format(startDate, 'yyyy-MM-dd');
-  const formattedEndDate = format(endDate, 'yyyy-MM-dd');
+  const { users } = useAuth();
+  const { attendanceRecords } = useAttendanceStore();
 
-  // Query attendance report data
-  const { data: reportData, isLoading } = useQuery<any[]>({
-    queryKey: [
-      "/api/reports/attendance",
-      formattedStartDate,
-      formattedEndDate,
-      selectedUserId
-    ],
-    queryFn: async () => {
-      // Determine if we need to add userId to the query
-      const userIdParam = selectedUserId && selectedUserId !== "all" ? `&userId=${selectedUserId}` : '';
-      
-      const url = `/api/reports/attendance?startDate=${formattedStartDate}&endDate=${formattedEndDate}${userIdParam}`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Failed to fetch attendance report');
-      }
-      return response.json();
+  const [period, setPeriod] = useState("month");
+  const [selectedUserId, setSelectedUserId] = useState<string | null>("all");
+
+  const today = new Date();
+
+  const [startDate, endDate] = useMemo(() => {
+    switch (period) {
+      case "week":
+        return [subDays(today, 7), today];
+      case "quarter":
+        return [subDays(today, 90), today];
+      case "month":
+      default:
+        return [startOfMonth(today), endOfMonth(today)];
     }
-  });
-  
-  // Reset user filter when period changes
-  const handlePeriodChange = (value: string) => {
-    setPeriod(value);
-    setSelectedUserId(null);
-  };
-  
-  if (isLoading || isLoadingUsers) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Attendance Summary Report</CardTitle>
-          <CardDescription>
-            Overview of employee attendance during the selected period
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-between mb-6">
-            <div className="flex gap-2">
-              <Skeleton className="h-10 w-32" />
-              <Skeleton className="h-10 w-40" />
-            </div>
-            <Skeleton className="h-10 w-24" />
-          </div>
-          <Skeleton className="h-64 w-full" />
-        </CardContent>
-      </Card>
-    );
+  }, [period]);
+
+  const dateRange: Date[] = [];
+  for (let d = startDate; d <= endDate; d = addDays(d, 1)) {
+    dateRange.push(d);
   }
-  
+
+  const filteredUsers = selectedUserId === "all"
+    ? users
+    : users.filter((u) => u.id === selectedUserId);
+
+  const reportData = filteredUsers.map((user) => {
+    const userRecords = attendanceRecords.filter(
+      (rec) =>
+        rec.userId === user.id &&
+        isWithinInterval(new Date(rec.date), { start: startDate, end: endDate })
+    );
+
+    let presentDays = 0;
+    let halfDays = 0;
+    let lateArrivals = 0;
+    let totalMinutes = 0;
+    let attendedDates: string[] = [];
+
+    userRecords.forEach((rec) => {
+      const dateStr = new Date(rec.date).toISOString().split("T")[0];
+      attendedDates.push(dateStr);
+
+      if (rec.status === "present") {
+        presentDays++;
+
+        if (rec.checkInTime) {
+          const checkIn = new Date(rec.checkInTime);
+          const mins = checkIn.getHours() * 60 + checkIn.getMinutes();
+          if (mins > LATE_THRESHOLD_MINUTES) lateArrivals++;
+        }
+
+        if (rec.workingHours) {
+          const [h, m] = rec.workingHours.split(/[hm\s]+/).filter(Boolean).map(Number);
+          const durationMin = h * 60 + m;
+          totalMinutes += durationMin;
+          if (durationMin < HALF_DAY_MINUTES) halfDays++;
+        }
+      }
+    });
+
+    const allDateStrings = dateRange.map((d) => format(d, "yyyy-MM-dd"));
+    const absentDays = allDateStrings.filter(
+      (d) => !attendedDates.includes(d)
+    ).length;
+
+    const avgMins = presentDays > 0 ? totalMinutes / presentDays : 0;
+    const avgH = Math.floor(avgMins / 60);
+    const avgM = Math.floor(avgMins % 60);
+    const avgWorkingHours = presentDays > 0 ? `${avgH}h ${avgM}m` : "—";
+
+    return {
+      user,
+      presentDays,
+      halfDays,
+      lateArrivals,
+      absentDays,
+      avgWorkingHours,
+    };
+  });
+
+  const chartData = {
+    labels: reportData.map((r) => `${r.user.firstName} ${r.user.lastName}`),
+    datasets: [
+      {
+        label: "Present",
+        data: reportData.map((r) => r.presentDays),
+        backgroundColor: "#34d399", // green-400
+      },
+      {
+        label: "Absent",
+        data: reportData.map((r) => r.absentDays),
+        backgroundColor: "#f87171", // red-400
+      },
+      {
+        label: "Half Days",
+        data: reportData.map((r) => r.halfDays),
+        backgroundColor: "#fbbf24", // yellow-400
+      },
+    ],
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Attendance Summary Report</CardTitle>
         <CardDescription>
-          Overview of employee attendance during the selected period
-          ({format(startDate, "MMM d, yyyy")} - {format(endDate, "MMM d, yyyy")})
+          Overview from {format(startDate, "MMM d")} to {format(endDate, "MMM d, yyyy")}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex justify-between mb-6">
+        <div className="flex justify-between mb-6 flex-wrap gap-2">
           <div className="flex gap-2">
-            <Select value={period} onValueChange={handlePeriodChange}>
-              <SelectTrigger className="w-[150px]">
+            <Select value={period} onValueChange={(v) => setPeriod(v)}>
+              <SelectTrigger className="w-[140px]">
                 <SelectValue placeholder="Select period" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="week">Last Week</SelectItem>
-                <SelectItem value="month">Current Month</SelectItem>
+                <SelectItem value="month">This Month</SelectItem>
                 <SelectItem value="quarter">Last 90 Days</SelectItem>
               </SelectContent>
             </Select>
-            
-            <Select 
-              value={selectedUserId || ""} 
-              onValueChange={setSelectedUserId}
+
+            <Select
+              value={selectedUserId || ""}
+              onValueChange={(v) => setSelectedUserId(v)}
             >
               <SelectTrigger className="w-[200px]">
                 <SelectValue placeholder="All Employees" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem key="all" value="all">All Employees</SelectItem>
-                {users?.map((user) => (
-                  <SelectItem key={user.id} value={user.id.toString()}>
-                    {user.firstName} {user.lastName}
+                <SelectItem value="all">All Employees</SelectItem>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.firstName} {u.lastName}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-          
+
           <Button variant="outline">
             <DownloadCloud className="h-4 w-4 mr-2" />
             Export
           </Button>
         </div>
-        
-        {reportData && reportData.length > 0 ? (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Employee</TableHead>
-                  <TableHead>Present Days</TableHead>
-                  <TableHead>Absent Days</TableHead>
-                  <TableHead>Half Days</TableHead>
-                  <TableHead>Late Arrivals</TableHead>
-                  <TableHead>Avg. Working Hours</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {reportData.map((record) => (
-                  <TableRow key={record.user.id}>
-                    <TableCell className="font-medium">
-                      {record.user.firstName} {record.user.lastName}
-                    </TableCell>
-                    <TableCell>
-                      <span className="flex items-center">
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-100 mr-2">
-                          {record.presentDays}
-                        </Badge>
-                        {period === "month" && (
-                          <span className="text-xs text-gray-500">
-                            {Math.round((record.presentDays / 22) * 100)}%
-                          </span>
-                        )}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-                        {record.absentDays}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                        {record.halfDays}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">
-                        {record.lateArrivals}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-medium">{record.avgWorkingHours}</span>
-                    </TableCell>
+
+        {reportData.length > 0 ? (
+          <>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Employee</TableHead>
+                    <TableHead>Present</TableHead>
+                    <TableHead>Absent</TableHead>
+                    <TableHead>Half Days</TableHead>
+                    <TableHead>Late Arrivals</TableHead>
+                    <TableHead>Avg. Hours</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {reportData.map((r) => (
+                    <TableRow key={r.user.id}>
+                      <TableCell>
+                        {r.user.firstName} {r.user.lastName}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="bg-green-100 text-green-800">{r.presentDays}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="bg-red-100 text-red-800">{r.absentDays}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="bg-yellow-100 text-yellow-800">{r.halfDays}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className="bg-orange-100 text-orange-800">{r.lateArrivals}</Badge>
+                      </TableCell>
+                      <TableCell>{r.avgWorkingHours}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            <div className="mt-10">
+              <Bar
+                data={chartData}
+                options={{
+                  responsive: true,
+                  plugins: {
+                    legend: {
+                      position: "top" as const,
+                    },
+                    tooltip: {
+                      mode: "index",
+                      intersect: false,
+                    },
+                  },
+                }}
+              />
+            </div>
+          </>
         ) : (
-          <div className="text-center py-12 text-gray-500 border rounded-md">
-            <BarChart2 className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-            <p>No attendance data available for the selected period.</p>
-          </div>
+          <p className="text-center py-6 text-gray-500">No data available for selected filters.</p>
         )}
       </CardContent>
     </Card>

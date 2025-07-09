@@ -1,72 +1,92 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useMemo } from "react";
 import {
   Card,
-  CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
+  CardContent,
 } from "@/components/ui/card";
+
 import {
   Table,
-  TableBody,
-  TableCell,
-  TableHead,
   TableHeader,
   TableRow,
+  TableHead,
+  TableBody,
+  TableCell,
 } from "@/components/ui/table";
+
 import {
   Select,
-  SelectContent,
-  SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@/components/ui/select";
+
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Skeleton } from "@/components/ui/skeleton";
 import { DownloadCloud, PieChart } from "lucide-react";
 
+import { useAuth } from "@/hooks/use-auth";
+import { useLeaveStore } from "@/stores/leave-store";
+
 export default function LeaveReport() {
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
-  
-  // Generate year options (current year and previous 2 years)
+  const { users } = useAuth();
+  const {
+    leaveApplications,
+    leaveQuotas,
+  } = useLeaveStore();
+
   const currentYear = new Date().getFullYear();
   const years = [currentYear, currentYear - 1, currentYear - 2];
-  
-  // Query leave utilization report
-  const { data: reportData, isLoading } = useQuery<any[]>({
-    queryKey: ["/api/reports/leave-utilization", selectedYear],
-    queryFn: async () => {
-      const url = `/api/reports/leave-utilization?year=${selectedYear}`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error('Failed to fetch leave utilization report');
-      }
-      return response.json();
-    }
-  });
-  
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Leave Utilization Report</CardTitle>
-          <CardDescription>
-            Overview of employee leave usage for {selectedYear}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-between mb-6">
-            <Skeleton className="h-10 w-32" />
-            <Skeleton className="h-10 w-24" />
-          </div>
-          <Skeleton className="h-64 w-full" />
-        </CardContent>
-      </Card>
-    );
-  }
-  
+  const [selectedYear, setSelectedYear] = useState(currentYear.toString());
+
+  const reportData = useMemo(() => {
+    return users.map((user) => {
+      const userQuotas = leaveQuotas.filter(
+        (q) => q.userId === user.id && q.year.toString() === selectedYear
+      );
+
+      const userApps = leaveApplications.filter(
+        (app) =>
+          app.userId === user.id &&
+          app.status === "approved" &&
+          new Date(app.appliedAt).getFullYear().toString() === selectedYear
+      );
+
+      const leaveTypeMap: Record<string, { used: number }> = {};
+
+      userApps.forEach((app) => {
+        if (!leaveTypeMap[app.leaveTypeId]) {
+          leaveTypeMap[app.leaveTypeId] = { used: 0 };
+        }
+        leaveTypeMap[app.leaveTypeId].used += app.totalDays;
+      });
+
+      const leaveUtilization = userQuotas.map((quota) => {
+        const usedQuota = leaveTypeMap[quota.leaveTypeId]?.used || 0;
+        const remainingQuota = quota.totalQuota - usedQuota;
+        const utilizationPercentage = quota.totalQuota
+          ? Math.round((usedQuota / quota.totalQuota) * 100)
+          : 0;
+
+        return {
+          leaveType: `Leave Type ${quota.leaveTypeId}`, // Replace with lookup if you have names
+          totalQuota: quota.totalQuota,
+          usedQuota,
+          remainingQuota,
+          utilizationPercentage,
+        };
+      });
+
+      return {
+        user,
+        leaveUtilization,
+      };
+    }).filter((entry) => entry.leaveUtilization.length > 0);
+  }, [users, leaveApplications, leaveQuotas, selectedYear]);
+
   return (
     <Card>
       <CardHeader>
@@ -77,8 +97,8 @@ export default function LeaveReport() {
       </CardHeader>
       <CardContent>
         <div className="flex justify-between mb-6">
-          <Select 
-            value={selectedYear} 
+          <Select
+            value={selectedYear}
             onValueChange={setSelectedYear}
           >
             <SelectTrigger className="w-[150px]">
@@ -92,14 +112,14 @@ export default function LeaveReport() {
               ))}
             </SelectContent>
           </Select>
-          
+
           <Button variant="outline">
             <DownloadCloud className="h-4 w-4 mr-2" />
             Export
           </Button>
         </div>
-        
-        {reportData && reportData.length > 0 ? (
+
+        {reportData.length > 0 ? (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -113,11 +133,11 @@ export default function LeaveReport() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {reportData.flatMap((report) => 
-                  report.leaveUtilization.map((utilization: any, index: number) => (
+                {reportData.flatMap((report) =>
+                  report.leaveUtilization.map((utilization, index) => (
                     <TableRow key={`${report.user.id}-${index}`}>
                       {index === 0 ? (
-                        <TableCell 
+                        <TableCell
                           className="font-medium"
                           rowSpan={report.leaveUtilization.length}
                         >
@@ -131,8 +151,8 @@ export default function LeaveReport() {
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <div className="w-24">
-                            <Progress 
-                              value={utilization.utilizationPercentage} 
+                            <Progress
+                              value={utilization.utilizationPercentage}
                               className="h-2"
                             />
                           </div>

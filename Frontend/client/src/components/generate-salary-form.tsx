@@ -87,7 +87,7 @@ export default function GenerateSalaryForm({
         deductions: parseInt(data.deductions || "0"),
         bonus: parseInt(data.bonus || "0"),
         netSalary,
-        paymentStatus: "pending",
+        paymentStatus: "paid",
         notes: data.notes ?? "",
       });
 
@@ -140,7 +140,7 @@ export default function GenerateSalaryForm({
                     </FormControl>
                     <SelectContent>
                       {users?.map((user) => (
-                        <SelectItem key={user.id} value={user.username}>
+                        <SelectItem key={user.id} value={user.id}>
                           {user.firstName} {user.lastName} ({user.position})
                         </SelectItem>
                       ))}

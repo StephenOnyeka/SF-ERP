@@ -64,7 +64,6 @@ export default function AuthPage() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [registerError, setRegisterError] = useState<string | null>(null);
 
-
   useEffect(() => {
     if (user) {
       setTimeout(() => {
@@ -92,12 +91,10 @@ export default function AuthPage() {
       email: "",
       department: "",
       position: "",
-      
     },
   });
 
   const handleLogin = async (data: LoginFormData) => {
-
     setIsLoading(true);
     setLoginError(null);
     try {
@@ -395,14 +392,13 @@ export default function AuthPage() {
                               <FormItem>
                                 <div className="flex items-center space-x-2">
                                   <FormControl>
-
-                                  <Checkbox
-                                    id="remember-me"
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    className=""
+                                    <Checkbox
+                                      id="remember-me"
+                                      checked={field.value}
+                                      onCheckedChange={field.onChange}
+                                      className=""
                                     />
-                                    </FormControl>
+                                  </FormControl>
                                   <label
                                     htmlFor="remember-me"
                                     className="text-sm text-gray-700"
@@ -560,7 +556,7 @@ export default function AuthPage() {
                           )}
                         />
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="flex gap-4">
                           <FormField
                             control={registerForm.control}
                             name="department"
@@ -596,6 +592,29 @@ export default function AuthPage() {
                                       className="pl-10"
                                       {...field}
                                     />
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={registerForm.control}
+                            name="role"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Role</FormLabel>
+                                <FormControl>
+                                  <div className="relative">
+                                    <UserCircle className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
+                                    <select
+                                      {...field}
+                                      className="pl-10 pr-4 py-2 block w-full border border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
+                                    >
+                                      <option value="employee">Employee</option>
+                                      <option value="hr">HR</option>
+                                      <option value="admin">Admin</option>
+                                    </select>
                                   </div>
                                 </FormControl>
                                 <FormMessage />

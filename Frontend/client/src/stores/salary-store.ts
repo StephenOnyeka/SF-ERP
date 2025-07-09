@@ -3,12 +3,10 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import type { Salary } from '../../../shared/schema';
 import { v4 as uuid } from 'uuid';
 
-// Extended salary type with timestamp
 export interface ExtendedSalary extends Salary {
   createdAt: Date;
 }
 
-// Form input type
 export type NewSalaryData = Omit<ExtendedSalary, 'id' | 'paymentDate' | 'createdAt'>;
 
 const getPreviousMonth = () => {
@@ -16,7 +14,6 @@ const getPreviousMonth = () => {
   return { month: 6, year: date.getFullYear() };
 };
 
-// Generate seeded salary data (optional)
 const generateInitialSalaryData = (): ExtendedSalary[] => {
   const { month, year } = getPreviousMonth();
   return [
@@ -38,7 +35,25 @@ const generateInitialSalaryData = (): ExtendedSalary[] => {
 
 interface SalaryState {
   salaryRecords: ExtendedSalary[];
+
   addSalaryRecord: (newRecord: NewSalaryData) => void;
+
+  getSalariesByPeriod: (month: number, year: number) => ExtendedSalary[];
+
+  getSalarySummaryByPeriod: (
+    month: number,
+    year: number,
+    users: { id: string }[]
+  ) => {
+    employees: {
+      userId: string;
+      salary: ExtendedSalary | null;
+    }[];
+    totalSalaries: number;
+    paidCount: number;
+    pendingCount: number;
+    noSalaryCount: number;
+  };
 }
 
 export const useSalaryStore = create<SalaryState>()(
@@ -68,6 +83,43 @@ export const useSalaryStore = create<SalaryState>()(
         };
 
         set({ salaryRecords: [...current, newRecord] });
+      },
+
+      getSalariesByPeriod: (month, year) => {
+        return get().salaryRecords.filter(
+          (rec) => rec.month === month && rec.year === year
+        );
+      },
+
+      getSalarySummaryByPeriod: (month, year, users) => {
+        const records = get().salaryRecords.filter(
+          (rec) => rec.month === month && rec.year === year
+        );
+
+        const recordMap = new Map<string, ExtendedSalary>();
+        for (const record of records) {
+          console.log(record,"record from getslarysummary");
+          recordMap.set(record.userId, record);
+        }
+        console.log(users,"users from getslarysummary"); 
+        const employees = users.map((user) => ({
+          userId: user.id,
+          salary: recordMap.get(user.id) || null,
+        }));
+        console.log(employees,"employees from getslarysummary");
+
+        const totalSalaries = records.reduce((sum, rec) => sum + rec.netSalary, 0);
+        const paidCount = records.filter((r) => r.paymentStatus === 'paid').length;
+        const pendingCount = records.filter((r) => r.paymentStatus === 'pending').length;
+        const noSalaryCount = users.length - recordMap.size;
+
+        return {
+          employees,
+          totalSalaries,
+          paidCount,
+          pendingCount,
+          noSalaryCount,
+        };
       },
     }),
     {
